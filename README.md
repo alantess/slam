@@ -1,1 +1,1 @@
-# slam
+# SLAM Simultaneous localization & mapping  
