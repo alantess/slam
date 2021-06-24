@@ -35,7 +35,6 @@ class FeatureExtractor(object):
 
     # Extracts features
     def extract(self, img):
-        proj = np.array([0, 0, 0])
         pts1, pts2, kpts, matches = self.extract_feats(img)
         points1 = self.cart2hom(pts1)
         points2 = self.cart2hom(pts2)
@@ -63,25 +62,14 @@ class FeatureExtractor(object):
         else:
             print('BAD ARRAY')
 
-        if len(tripoints) > 0:
-            x = [pt for pt in tripoints[0]]
-            y = [-pt for pt in tripoints[1]]
-            z = [-pt for pt in tripoints[2]]
-
-            for i in range(tripoints.shape[1]):
-                cur = np.array([x[i], y[i], z[i]])
-                proj = np.vstack((proj, cur))
-
-            proj = proj[1:, :]
-
-        return self.img, proj
+        return self.img, tripoints, kpts, matches
 
     def extract_feats(self, img):
         ret = []
         # Extracts ORB
         feats = cv.goodFeaturesToTrack(
-            np.mean(img, axis=2).astype(np.uint8), 4000, 0.02, 3)
-        kps = [cv.KeyPoint(x=f[0][0], y=f[0][1], _size=30) for f in feats]
+            np.linalg.norm(img, axis=2, ord=2).astype(np.uint8), 4000, 0.02, 3)
+        kps = [cv.KeyPoint(x=f[0][0], y=f[0][1], _size=20) for f in feats]
 
         self.img = cv.drawKeypoints(img,
                                     kps,
@@ -92,7 +80,7 @@ class FeatureExtractor(object):
         if self.last is not None:
             matches = self.bf.knnMatch(des, self.last['des'], 2)
             for m, n in matches:
-                if m.distance < 0.55 * n.distance:
+                if m.distance < 0.75 * n.distance:
                     if m.distance < 64:
                         kpt1_match = kpts[m.queryIdx]
                         kpt2_match = self.last["kpts"][m.trainIdx]
@@ -148,30 +136,23 @@ class FeatureExtractor(object):
         points = self.lidar_generation(points)
         return points
 
-    def lidar_generation(self, pts):
-        uv_depth = self._2d_to_3d(pts)
-        # uv_depth = self.scaler.fit_transform(uv_depth)
-        n = uv_depth.shape[0]
-        z = uv_depth[:, 2] * 0.2
-        x = ((uv_depth[:, 0] - self.c_u) * z) / self.f_u
-        y = ((uv_depth[:, 1] - self.c_v) * z) / self.f_v
 
-        pts_3d_rect = np.zeros((n, 3))
-        pts_3d_rect[:, 0] = x
-        pts_3d_rect[:, 1] = y
-        pts_3d_rect[:, 2] = z
+class PointMap(object):
+    def __init__(self):
+        self.array = [0, 0, 0]
 
-        pts_3d_rect = self.scaler.fit_transform(pts_3d_rect)
+    def collect_points(self, tripoints):
+        if len(tripoints) > 0:
+            array_to_project = np.array([0, 0, 0])
 
-        return pts_3d_rect
+            x_points = [pt for pt in tripoints[0]]
+            y_points = [-pt for pt in tripoints[1]]
+            z_points = [-pt for pt in tripoints[2]]
 
-    def _2d_to_3d(self, pts):
-        points = cv.convertPointsToHomogeneous(pts)
-        points = points.reshape(-3, 2)
-        rows, cols = points.shape
-        c, r = np.meshgrid(np.arange(cols), np.arange(rows))
-        points = np.stack([c, r, points])
-        points = points.reshape((3, -1))
-        points = points.T
+            for i in range(tripoints.shape[1]):
+                curr_array = np.array([x_points[i], y_points[i], z_points[i]])
+                array_to_project = np.vstack((array_to_project, curr_array))
 
-        return points
+            array_to_project = array_to_project[1:, :]
+
+            return array_to_project

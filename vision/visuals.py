@@ -1,13 +1,14 @@
 import numpy as np
+import time
 import torch
 from torchvision import transforms
 from common.helpers.support import apply_sharpen_filter
 import cv2 as cv
 import open3d as o3d
-from slam.extract.features import FeatureExtractor
+from slam.extract.features import *
 
 W, H = 720, 480
-VIDEO = '../etc/videos/driving.mp4'
+VIDEO = '../etc/videos/test.mp4'
 
 
 class FeatDisplay(object):
@@ -16,8 +17,8 @@ class FeatDisplay(object):
         self.model = model
         self.device = device
         self.time_step = 0
-
         self.vis = None
+        self.pmap = PointMap()
 
         self.geometry = None
         self.extractor = FeatureExtractor(H, W)
@@ -33,16 +34,8 @@ class FeatDisplay(object):
         self.vis.create_window(width=W, height=H, top=600, left=650)
         opt = self.vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])
-        ctr = self.vis.get_view_control()
-        ctr.set_lookat([0, 1, 0])
-        ctr.set_front([1, 0, 0])
-        ctr.set_up([0, 0, 1])
-        ctr.set_zoom(0.25)
-        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(1.5)
 
         self.geometry = o3d.geometry.PointCloud()
-        self.vis.add_geometry(frame)
-        self.vis.clear_geometries()
         self.vis.add_geometry(self.geometry)
         self.extractor = FeatureExtractor(H, W)
         # Open Video
@@ -73,9 +66,12 @@ class FeatDisplay(object):
             # Display Output
             frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
             # img = cv.applyColorMap(frame, cv.COLORMAP_TWILIGHT_SHIFTED)
-            img, xyz = self.extractor.extract(frame)
+            img, tripoints, kpts, matches = self.extractor.extract(frame)
             if self.time_step > 0:
+                xyz = self.pmap.collect_points(tripoints)
                 self.display_lidar(xyz)
+                time.sleep(.2)
+
             cv.imshow('frame', img)
             self.time_step += 1
             if cv.waitKey(1) == ord('q'):
@@ -89,9 +85,11 @@ class FeatDisplay(object):
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             frame = cv.resize(frame, (W, H))
-            img, xyz = self.extractor.extract(frame)
+            img, tripoints, kpts, matches = self.extractor.extract(frame)
             if self.time_step > 0:
+                xyz = self.pmap.collect_points(tripoints)
                 self.display_lidar(xyz)
+                time.sleep(.2)
             cv.imshow('frame', img)
             self.time_step += 1
             if cv.waitKey(1) == ord('q'):
@@ -117,7 +115,9 @@ class FeatDisplay(object):
         o3d.visualization.draw_geometries([self.geometry])
 
     def display_lidar(self, xyz):
+        self.geometry.clear()
         self.geometry.points = o3d.utility.Vector3dVector(xyz)
-        self.vis.update_geometry(self.geometry)
-        self.vis.update_renderer()
+        self.vis.remove_geometry(self.geometry)
+        self.vis.add_geometry(self.geometry)
         self.vis.poll_events()
+        self.vis.update_renderer()
