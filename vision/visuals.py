@@ -15,6 +15,7 @@ class FeatDisplay(object):
         # Gui Settings for Point Cloud
         self.model = model
         self.device = device
+        self.time_step = 0
 
         self.vis = None
 
@@ -73,8 +74,10 @@ class FeatDisplay(object):
             frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
             # img = cv.applyColorMap(frame, cv.COLORMAP_TWILIGHT_SHIFTED)
             img, xyz = self.extractor.extract(frame)
-            self.display_lidar(xyz)
+            if self.time_step > 0:
+                self.display_lidar(xyz)
             cv.imshow('frame', img)
+            self.time_step += 1
             if cv.waitKey(1) == ord('q'):
                 break
 
@@ -87,8 +90,10 @@ class FeatDisplay(object):
             ret, frame = self.cap.read()
             frame = cv.resize(frame, (W, H))
             img, xyz = self.extractor.extract(frame)
-            self.display_lidar(xyz)
+            if self.time_step > 0:
+                self.display_lidar(xyz)
             cv.imshow('frame', img)
+            self.time_step += 1
             if cv.waitKey(1) == ord('q'):
                 break
 
