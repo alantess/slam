@@ -15,9 +15,19 @@ class FeatDisplay(object):
         # Gui Settings for Point Cloud
         self.model = model
         self.device = device
+
+        self.vis = None
+
+        self.geometry = None
+        self.extractor = FeatureExtractor(H, W)
+        # Open Video
+        self.cap = None
+
+    def init(self):
         if self.model:
             self.model.load()
-            self.model.to(device)
+            self.model.to(self.device)
+
         self.vis = o3d.visualization.Visualizer()
         self.vis.create_window(width=W, height=H, top=600, left=650)
         opt = self.vis.get_render_option()
@@ -85,6 +95,21 @@ class FeatDisplay(object):
         self.vis.run()
         self.vis.destroy_window()
         cv.destroyAllWindows()
+
+    def test_vision(self):
+        pcd = o3d.geometry.PointCloud()
+        frame = cv.imread("../etc/dash2.jpg")
+        frame = cv.resize(frame, (W, H))
+        img, pts = self.extractor.extract(frame)
+        pcd.points = o3d.utility.Vector3dVector(pts)
+        o3d.visualization.draw_geometries([pcd])
+        cv.imshow('frame', img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+    def test_3d(self, data):
+        self.geometry.points = o3d.utility.Vector3dVector(data)
+        o3d.visualization.draw_geometries([self.geometry])
 
     def display_lidar(self, xyz):
         self.geometry.points = o3d.utility.Vector3dVector(xyz)
