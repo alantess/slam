@@ -25,11 +25,6 @@ class KittiOdometry(Dataset):
         self.transforms = transforms
         self.mode = "train.txt" if self.train else "val.txt"
         self.folders = [f[:-1] for f in open(root + self.mode)]
-        # with open(root + self.scenes) as f:
-        #     lines = f.readlines()
-
-        #     print(lines)
-
         self.combine_folder()
 
     def combine_folder(self):
@@ -78,3 +73,35 @@ class KittiOdometry(Dataset):
             intrinsic = np.linalg.inv(intrinsic)
 
         return tgt, ref, intrinsic
+
+
+class NYUDepth(Dataset):
+    def __init__(self, root, transforms=None, train=True):
+        self.root = root
+        self.transforms = transforms
+        self.mode = "/train/stereo_train_001/" if train else "/val/stereo_train_002/"
+        path = root + self.mode
+        self.camera = sorted(
+            glob.glob(os.path.join(path + "camera_5", "*.jpg")))
+        self.disparity = sorted(
+            glob.glob(os.path.join(path + "disparity", "*.png")))
+
+        K = np.array(
+            [2301.3147, 0, 1489.8536, 0, 2301.3147, 479.1750, 0, 0,
+             1]).reshape((3, 3))
+        self.intrinsic = np.linalg.inv(K)
+
+    def __len__(self):
+        return len(self.camera)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        camera = cv.imread(self.camera[idx]).astype(np.float32)
+        disparity = cv.imread(self.disparity[idx]).astype(np.uint8)
+        disparity = cv.applyColorMap(disparity, cv.COLORMAP_TWILIGHT_SHIFTED)
+        if self.transforms:
+            camera = self.transforms(camera)
+            disparity = self.transforms(disparity)
+
+        return camera, disparity
