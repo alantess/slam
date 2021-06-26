@@ -55,8 +55,8 @@ if __name__ == '__main__':
     ])
 
     model = DisparityNet()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    loss_fn = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
+    loss_fn = torch.nn.L1Loss()
 
     trainset = DepthDataset(args.disparity_dir, preprocess)
     train_loader = DataLoader(trainset,

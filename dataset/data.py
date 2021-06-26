@@ -98,7 +98,7 @@ class DepthDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         camera = cv.imread(self.camera[idx]).astype(np.float32)
-        disparity = cv.imread(self.disparity[idx], 0).astype(np.uint8)
+        disparity = cv.imread(self.disparity[idx]).astype(np.uint8)
         if self.transforms:
             camera = self.transforms(camera)
             disparity = self.transforms(disparity)
