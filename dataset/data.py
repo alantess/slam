@@ -75,7 +75,7 @@ class KittiOdometry(Dataset):
         return tgt, ref, intrinsic
 
 
-class NYUDepth(Dataset):
+class DepthDataset(Dataset):
     def __init__(self, root, transforms=None, train=True):
         self.root = root
         self.transforms = transforms
@@ -98,8 +98,7 @@ class NYUDepth(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         camera = cv.imread(self.camera[idx]).astype(np.float32)
-        disparity = cv.imread(self.disparity[idx]).astype(np.uint8)
-        disparity = cv.applyColorMap(disparity, cv.COLORMAP_TWILIGHT_SHIFTED)
+        disparity = cv.imread(self.disparity[idx], 0).astype(np.uint8)
         if self.transforms:
             camera = self.transforms(camera)
             disparity = self.transforms(disparity)

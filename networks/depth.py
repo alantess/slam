@@ -9,7 +9,7 @@ class DisparityNet(nn.Module):
     """
     Resnet50 U-Net Module
     """
-    def __init__(self, n_out_channels=3, chkpt_dir="model_checkpoints"):
+    def __init__(self, n_out_channels=1, chkpt_dir="model_checkpoints"):
         super(DisparityNet, self).__init__()
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, "disparity_net.pt")
@@ -76,6 +76,7 @@ class DisparityNet(nn.Module):
         x = torch.cat([x, original], dim=1)
         x = self.conv1_up(x)
 
+        x = F.sigmoid(x)
         return x
 
     def save(self):
