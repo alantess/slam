@@ -76,7 +76,7 @@ class DisparityNet(nn.Module):
         x = torch.cat([x, original], dim=1)
         x = self.conv1_up(x)
 
-        x = F.sigmoid(x)
+        x = torch.sigmoid(x)
         return x
 
     def save(self):
