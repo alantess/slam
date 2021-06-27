@@ -110,7 +110,7 @@ class NYUDepth(Dataset):
     def __init__(self, root, transforms=None, train=True):
         self.transforms = transforms
         folders = [x[0] for x in os.walk(root)][1:]
-        self.folders = folders[:8] if train else folders[8:]
+        self.folders = folders[:-1] if train else folders[-1:]
         self.imgs = []
         self.depth = []
         self.total_size = 0
@@ -130,10 +130,13 @@ class NYUDepth(Dataset):
         return self.total_size
 
     def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
         img = cv.imread(self.imgs[idx])
-        depth = cv.imread(self.depth[idx])
+        depth = cv.imread(self.depth[idx], 0)
+
         if self.transforms:
             img = self.transforms(img)
             depth = self.transforms(depth)
-
         return img, depth

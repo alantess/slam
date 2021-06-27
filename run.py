@@ -55,11 +55,11 @@ if __name__ == '__main__':
 
     preprocess = transforms.Compose([
         transforms.ToTensor(),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         transforms.Resize((args.img_height, args.img_width)),
     ])
 
-    model = DisparityNet(model_name='depth.pt')
+    model = DisparityNet(n_out_channels=1, model_name='depth.pt')
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
     loss_fn = torch.nn.L1Loss()
 
