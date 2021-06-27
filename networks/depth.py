@@ -9,10 +9,13 @@ class DisparityNet(nn.Module):
     """
     Resnet50 U-Net Module
     """
-    def __init__(self, n_out_channels=3, chkpt_dir="model_checkpoints"):
+    def __init__(self,
+                 n_out_channels=3,
+                 chkpt_dir="model_checkpoints",
+                 model_name="disparity_net.pt"):
         super(DisparityNet, self).__init__()
         self.chkpt_dir = chkpt_dir
-        self.file = os.path.join(chkpt_dir, "disparity_net.pt")
+        self.file = os.path.join(chkpt_dir, model_name)
         resnet = models.resnet50(True)
         modules = list(resnet.children())
         # Original Image

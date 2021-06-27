@@ -104,3 +104,33 @@ class DepthDataset(Dataset):
             disparity = self.transforms(disparity)
 
         return camera, disparity
+
+
+class NYUDepth(Dataset):
+    def __init__(self, root, transforms=None, train=True):
+        self.transforms = transforms
+        folders = [x[0] for x in os.walk(root)][1:]
+        self.folders = folders[:8] if train else folders[8:]
+        self.samples = {'real': [], 'depth': []}
+        self.crawl_folders()
+
+    def crawl_folders(self):
+        for folder in self.folders:
+            real = sorted(glob.glob(os.path.join(folder, "*.ppm")))
+            depth = sorted(glob.glob(os.path.join(folder, "*.pgm")))
+            n = min(len(real), len(depth))
+            for i in range(n):
+                self.samples['real'].append(real[i])
+                self.samples['depth'].append(depth[i])
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        img = cv.imread(self.samples['real'][idx])
+        depth = cv.imread(self.samples['depth'][idx])
+        if self.transforms:
+            img = self.transforms(img)
+            depth = self.transforms(depth)
+
+        return img, depth

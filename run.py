@@ -18,6 +18,11 @@ if __name__ == '__main__':
         type=str,
         default="/media/alan/seagate/datasets/kitti/vo/kitti_vo_256",
         help='Kitti VO dataset')
+    parser.add_argument('--nyu-dir',
+                        type=str,
+                        default="/media/alan/seagate/Downloads/nyudepth",
+                        help='Kitti VO dataset')
+
     parser.add_argument("--img-height",
                         default=512,
                         type=int,
@@ -54,16 +59,21 @@ if __name__ == '__main__':
         transforms.Resize((args.img_height, args.img_width)),
     ])
 
-    model = DisparityNet()
+    model = DisparityNet(model_name='depth.pt')
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
     loss_fn = torch.nn.L1Loss()
 
-    trainset = DepthDataset(args.disparity_dir, preprocess)
+    # trainset = DepthDataset(args.disparity_dir, preprocess)
+    # valset = DepthDataset(args.disparity_dir, preprocess, False)
+
+    # NYU V2 Depth
+    trainset = NYUDepth(args.nyu_dir, preprocess)
+    valset = NYUDepth(args.nyu_dir, preprocess, False)
+
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
                               pin_memory=PIN_MEM)
-    valset = DepthDataset(args.disparity_dir, preprocess, False)
     val_loader = DataLoader(valset,
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
