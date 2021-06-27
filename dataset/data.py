@@ -111,7 +111,9 @@ class NYUDepth(Dataset):
         self.transforms = transforms
         folders = [x[0] for x in os.walk(root)][1:]
         self.folders = folders[:8] if train else folders[8:]
-        self.samples = {'real': [], 'depth': []}
+        self.imgs = []
+        self.depth = []
+        self.total_size = 0
         self.crawl_folders()
 
     def crawl_folders(self):
@@ -119,16 +121,17 @@ class NYUDepth(Dataset):
             real = sorted(glob.glob(os.path.join(folder, "*.ppm")))
             depth = sorted(glob.glob(os.path.join(folder, "*.pgm")))
             n = min(len(real), len(depth))
+            self.total_size += n
             for i in range(n):
-                self.samples['real'].append(real[i])
-                self.samples['depth'].append(depth[i])
+                self.imgs.append(real[i])
+                self.depth.append(depth[i])
 
     def __len__(self):
-        return len(self.samples)
+        return self.total_size
 
     def __getitem__(self, idx):
-        img = cv.imread(self.samples['real'][idx])
-        depth = cv.imread(self.samples['depth'][idx])
+        img = cv.imread(self.imgs[idx])
+        depth = cv.imread(self.depth[idx])
         if self.transforms:
             img = self.transforms(img)
             depth = self.transforms(depth)
