@@ -37,8 +37,12 @@ class URes152(nn.Module):
 
         self.original_conv1 = nn.Conv2d(3, 64, 1, 1)
 
+        self.alpha = 10
+        self.beta = 0.01
+        self.sigmoid = nn.Sigmoid()
+
     def forward(self, x):
-        original = self.original_conv1(x)
+        original = self.activation(self.original_conv1(x))
         # Encoder
         layer1 = self.layer1(x)
         layer2 = self.layer2(layer1)
@@ -69,7 +73,8 @@ class URes152(nn.Module):
         # L1
         x = self.upsample(x)
         x = torch.cat([x, original], dim=1)
-        x = self.conv1_up(x)
+        x = self.activation(self.conv1_up(x))
+        x = self.alpha * self.sigmoid(x) + self.beta
         return x
 
     def save(self):

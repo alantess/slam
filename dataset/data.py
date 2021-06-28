@@ -140,3 +140,38 @@ class NYUDepth(Dataset):
             img = self.transforms(img)
             depth = self.transforms(depth)
         return img, depth
+
+
+class KittiDepthSet(Dataset):
+    def __init__(self, root, transforms=None, train=True):
+        self.transforms = transforms
+        self.mode = 'train.txt' if train else 'val.txt'
+        self.folders = [root + f[:-1] for f in open(root + self.mode)]
+        self.total_size = 0
+        self.imgs = []
+        self.depth = []
+        self._crawl_folders()
+
+    def _crawl_folders(self):
+        for folder in self.folders:
+            real = sorted(glob.glob(os.path.join(folder, "*.jpg")))
+            depth = sorted(glob.glob(os.path.join(folder, "*.npy")))
+            assert len(real) == len(depth)
+            n = len(real)
+            self.total_size += n
+            for i in range(n):
+                self.imgs.append(real[i])
+                self.depth.append(depth[i])
+
+    def __len__(self):
+        return self.total_size
+
+    def __getitem__(self, idx):
+        img = cv.imread(self.imgs[idx])
+        depth = np.load(self.depth[idx])
+        depth = cv.cvtColor(depth, cv.COLOR_GRAY2RGB)
+        if self.transforms:
+            img = self.transforms(img)
+            depth = self.transforms(depth)
+
+        return img, depth
