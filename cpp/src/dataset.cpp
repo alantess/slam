@@ -1,7 +1,7 @@
 #include "dataset.h"
 
 #define HEIGHT 256
-#define WIDTH 832
+#define WIDTH 512
 
 std::unordered_map<std::string, std::vector<std::string>>
 get_folders(std::string root, std::string directory) {
@@ -36,40 +36,20 @@ get_folders(std::string root, std::string directory) {
 };
 // Converts the image into a tensor
 torch::Tensor img_to_tensor(std::string path) {
-  cv::Mat img = cv::imread(path);
+  cv::Mat img = cv::imread(path, 0);
+  cv::Mat dst;
   if (img.empty()) {
     std::cout << "Could not read the image: " << path << std::endl;
   }
-
+  cv::resize(img, img, cv::Size(WIDTH, HEIGHT));
   img.convertTo(img, CV_32FC3, 1.0f / 255.0f);
-  /* cv::imshow("frame", img); */
+  cv::normalize(img, dst, 0, 1, cv::NORM_MINMAX);
 
   torch::Tensor tensor_img =
-      torch::from_blob(img.data, {1, HEIGHT, WIDTH, 1}, torch::kFloat);
-  tensor_img = tensor_img.permute({0, 3, 2, 1});
-  std::cout << tensor_img;
+      torch::from_blob(dst.data, {1, dst.rows, dst.cols, 1}, torch::kFloat32);
+  tensor_img = tensor_img.permute({0, 3, 1, 2});
+
   return tensor_img;
-}
-
-// Retrieves the files from the dataset;
-std::unordered_map<std::string, torch::Tensor> read_data(std::string root,
-                                                         std::string file_ext) {
-
-  auto files = get_folders(root, file_ext);
-  assert(files["images"].size() == files["depth"].size());
-  auto n = files["images"].size(); // Size of dataset
-
-  std::unordered_map<std::string, torch::Tensor> tensor_data;
-
-  auto img = img_to_tensor(files["depth"][0]);
-
-  img = img[0].permute({1, 2, 0});
-  /* img = img.mul(255).clamp(0, 255); */
-  cv::Mat output_mat(cv::Size{WIDTH, HEIGHT}, CV_8UC1, img.data_ptr());
-  cv::imshow("Window", output_mat);
-  cv::waitKey(0);
-
-  return tensor_data;
 }
 
 KittiDataset::KittiDataset(const std::string &root, Mode mode) : mode_(mode) {
@@ -87,14 +67,25 @@ KittiDataset::KittiDataset(const std::string &root, Mode mode) : mode_(mode) {
   } else {
     std::cout << "INVALID MODE\n";
   }
-  auto data = read_data(root, file_ext);
+
+  auto files = get_folders(root, file_ext);
+  assert(files["images"].size() == files["depth"].size());
+  int n = files["images"].size(); // Size of dataset
+
+  images_ = torch::empty({n, 1, HEIGHT, WIDTH});
+  targets_ = torch::empty({n, 1, HEIGHT, WIDTH});
 }
 
 torch::data::Example<> KittiDataset::get(size_t index) {
+  auto img = img_to_tensor(ref_files["images"][index]);
+  auto depth = img_to_tensor(ref_files["depth"][index]);
+  images_[index] = img[0];
+  targets_[index] = depth[0];
+
   return {images_[index], targets_[index]};
 }
 
-torch::optional<size_t> KittiDataset::size() const { return images_.size(0); }
+torch::optional<size_t> KittiDataset::size() const { return n; }
 
 bool KittiDataset::is_train() const noexcept { return mode_ == Mode::kTrain; }
 

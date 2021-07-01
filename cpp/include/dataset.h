@@ -30,9 +30,11 @@ public:
   const torch::Tensor &targets() const;
 
 private:
+  std::unordered_map<std::string, std::vector<std::string>> ref_files;
   torch::Tensor images_;
   torch::Tensor targets_;
   Mode mode_;
+  int n;
 };
 
 cv::Mat convert_to_cv(torch::Tensor img);
