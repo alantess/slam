@@ -42,7 +42,7 @@ torch::Tensor img_to_tensor(std::string path) {
   }
 
   img.convertTo(img, CV_32FC3, 1.0f / 255.0f);
-  cv::imshow("frame", img);
+  /* cv::imshow("frame", img); */
 
   torch::Tensor tensor_img =
       torch::from_blob(img.data, {1, HEIGHT, WIDTH, 1}, torch::kFloat);
@@ -65,7 +65,7 @@ std::unordered_map<std::string, torch::Tensor> read_data(std::string root,
 
   img = img[0].permute({1, 2, 0});
   /* img = img.mul(255).clamp(0, 255); */
-  cv::Mat output_mat(cv::Size{WIDTH, HEIGHT}, CV_32FC3, img.data_ptr());
+  cv::Mat output_mat(cv::Size{WIDTH, HEIGHT}, CV_8UC1, img.data_ptr());
   cv::imshow("Window", output_mat);
   cv::waitKey(0);
 
