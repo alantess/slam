@@ -39,7 +39,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=4,
+                        default=6,
                         help='Batch size of input')
     parser.add_argument(
         '--video',
@@ -62,12 +62,14 @@ if __name__ == '__main__':
     preprocess = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize((args.img_height, args.img_width)),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
     ])
 
     # model = DisparityNet(n_out_channels=3, model_name='depth.pt')
-    model = URes152(n_channels=1, model_name='ureskitti.pt')
-    optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
-    loss_fn = torch.nn.L1Loss()
+    model = URes152(n_channels=3, model_name='ureskitti.pt')
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    loss_fn = torch.nn.MSELoss()
 
     trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
     valset = KittiDepthSet(args.kitti_depth_dir, preprocess, False)
@@ -89,5 +91,5 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
-    # display_depth(model, preprocess, device, args.video, args.img_height,
-    # args.img_width)
+    display_depth(model, preprocess, device, args.video, args.img_height,
+                  args.img_width)

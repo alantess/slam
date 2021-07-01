@@ -169,13 +169,10 @@ class KittiDepthSet(Dataset):
 
     def __getitem__(self, idx):
         img = cv.imread(self.imgs[idx])
-        depth = cv.imread(self.depth[idx], 0)
-
+        depth = cv.imread(self.depth[idx])
+        depth = cv.applyColorMap(depth, cv.COLORMAP_JET)
         if self.transforms:
-            normalize = torchvision.transforms.Normalize(
-                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             img = self.transforms(img)
-            img = normalize(img)
             depth = self.transforms(depth)
 
         return img, depth

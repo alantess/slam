@@ -28,8 +28,7 @@ def display_depth(model, transform, device, video, height=512, width=512):
         frame = cv.resize(frame, (834, 256))
         v_frame = cv.resize(v_frame, (834, 256))
 
-        weighted = cv.addWeighted(v_frame.astype(np.float32), alpha,
-                                  frame.astype(np.float32), beta, 0)
+        weighted = cv.addWeighted(v_frame, alpha, frame, beta, 0)
         cv.imshow('frame', weighted)
         if cv.waitKey(1) == ord('q'):
             break
