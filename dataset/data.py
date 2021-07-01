@@ -4,6 +4,7 @@ import cv2 as cv
 import glob
 import numpy as np
 import random
+import torchvision
 from torch.utils.data import Dataset
 
 
@@ -170,6 +171,7 @@ class KittiDepthSet(Dataset):
         img = cv.imread(self.imgs[idx])
         depth = np.load(self.depth[idx])
         depth = cv.cvtColor(depth, cv.COLOR_GRAY2RGB)
+
         if self.transforms:
             img = self.transforms(img)
             depth = self.transforms(depth)
