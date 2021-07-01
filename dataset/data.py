@@ -156,7 +156,7 @@ class KittiDepthSet(Dataset):
     def _crawl_folders(self):
         for folder in self.folders:
             real = sorted(glob.glob(os.path.join(folder, "*.jpg")))
-            depth = sorted(glob.glob(os.path.join(folder, "*.npy")))
+            depth = sorted(glob.glob(os.path.join(folder, "*.png")))
             assert len(real) == len(depth)
             n = len(real)
             self.total_size += n
@@ -169,11 +169,13 @@ class KittiDepthSet(Dataset):
 
     def __getitem__(self, idx):
         img = cv.imread(self.imgs[idx])
-        depth = np.load(self.depth[idx])
-        depth = cv.cvtColor(depth, cv.COLOR_GRAY2RGB)
+        depth = cv.imread(self.depth[idx], 0)
 
         if self.transforms:
+            normalize = torchvision.transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             img = self.transforms(img)
+            img = normalize(img)
             depth = self.transforms(depth)
 
         return img, depth

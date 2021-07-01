@@ -4,6 +4,8 @@ import torch
 
 
 def display_depth(model, transform, device, video, height=512, width=512):
+    alpha = 0.1
+    beta = 1 - alpha
     model.load()
     model.to(device)
     frame_tensor = torch.zeros((1, 3, height, width),
@@ -13,6 +15,7 @@ def display_depth(model, transform, device, video, height=512, width=512):
     cap = cv.VideoCapture(video)
     while cap.isOpened():
         ret, frame = cap.read()
+        v_frame = frame
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
@@ -23,9 +26,22 @@ def display_depth(model, transform, device, video, height=512, width=512):
                 pred = pred.permute(1, 2, 0)
         frame = pred.detach().cpu().numpy().astype(np.float32)
         frame = cv.resize(frame, (834, 256))
+        v_frame = cv.resize(v_frame, (834, 256))
 
-        cv.imshow('frame', frame)
+        weighted = cv.addWeighted(v_frame.astype(np.float32), alpha,
+                                  frame.astype(np.float32), beta, 0)
+        cv.imshow('frame', weighted)
         if cv.waitKey(1) == ord('q'):
             break
     cap.release()
     cv.destroyAllWindows()
+
+
+def show_dataloader(loader):
+    img, depth = next(iter(loader))
+    print(depth.size())
+    depth = depth[0]
+    print(torch.unique(depth))
+    depth = depth.permute(1, 2, 0).numpy()
+    cv.imshow('frame', depth)
+    cv.waitKey(0)

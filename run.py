@@ -6,7 +6,7 @@ from support.train import train
 from networks.depth import DisparityNet
 from networks.ures import URes152
 from dataset.data import *
-from vision.depth import display_depth
+from vision.depth import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SLAM')
@@ -19,11 +19,10 @@ if __name__ == '__main__':
         type=str,
         default="/media/alan/seagate/datasets/kitti/vo/kitti_vo_256",
         help='Kitti VO dataset')
-    parser.add_argument(
-        '--kitti-depth-dir',
-        type=str,
-        default="/media/alan/seagate/datasets/kitti/256/kitti_256/",
-        help='Kitti VO dataset')
+    parser.add_argument('--kitti-depth-dir',
+                        type=str,
+                        default="/media/alan/seagate/datasets/kitti/cpp/",
+                        help='Kitti VO dataset')
 
     parser.add_argument('--nyu-dir',
                         type=str,
@@ -31,16 +30,16 @@ if __name__ == '__main__':
                         help='Kitti VO dataset')
 
     parser.add_argument("--img-height",
-                        default=512,
+                        default=256,
                         type=int,
                         help="Image height")
     parser.add_argument("--img-width",
-                        default=512,
+                        default=832,
                         type=int,
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=8,
+                        default=4,
                         help='Batch size of input')
     parser.add_argument(
         '--video',
@@ -63,13 +62,11 @@ if __name__ == '__main__':
     preprocess = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize((args.img_height, args.img_width)),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
     ])
 
     # model = DisparityNet(n_out_channels=3, model_name='depth.pt')
-    model = URes152(n_channels=3, model_name='ureskitti.pt')
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-5)
+    model = URes152(n_channels=1, model_name='ureskitti.pt')
+    optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
     loss_fn = torch.nn.L1Loss()
 
     trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
@@ -92,5 +89,5 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
-    display_depth(model, preprocess, device, args.video, args.img_height,
-                  args.img_width)
+    # display_depth(model, preprocess, device, args.video, args.img_height,
+    # args.img_width)
