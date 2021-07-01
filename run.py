@@ -56,7 +56,7 @@ if __name__ == '__main__':
     BATCH_SIZE = args.batch
     PIN_MEM = True
     NUM_WORKERS = 4
-    EPOCHS = 30
+    EPOCHS = 20
 
     torch.backends.cudnn.benchmark = True
 
@@ -67,9 +67,9 @@ if __name__ == '__main__':
                              std=[0.229, 0.224, 0.225]),
     ])
 
-    model = DisparityNet(n_out_channels=3, model_name='depth.pt')
-    # model = URes152(n_channels=3, model_name='ureskitti.pt')
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    # model = DisparityNet(n_out_channels=3, model_name='depth.pt')
+    model = URes152(n_channels=3, model_name='ureskitti.pt')
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-5)
     loss_fn = torch.nn.L1Loss()
 
     trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
@@ -91,6 +91,6 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    # train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
+    train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
     display_depth(model, preprocess, device, args.video, args.img_height,
                   args.img_width)

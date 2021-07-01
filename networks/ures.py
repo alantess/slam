@@ -14,7 +14,7 @@ class URes152(nn.Module):
         self.file = os.path.join(chkpt, model_name)
         self.activation = nn.SELU()
         # Resnet
-        resnet = models.resnet152(True)
+        resnet = models.resnet152(False)
         modules = list(resnet.children())
         self.layer1 = nn.Sequential(*modules[:3])
         self.layer2 = nn.Sequential(*modules[3:5])
