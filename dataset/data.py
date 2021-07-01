@@ -168,9 +168,14 @@ class KittiDepthSet(Dataset):
         return self.total_size
 
     def __getitem__(self, idx):
+        alpha = 0.65
+        beta = 1 - alpha
         img = cv.imread(self.imgs[idx])
         depth = cv.imread(self.depth[idx])
-        depth = cv.applyColorMap(depth, cv.COLORMAP_JET)
+        foreground = cv.applyColorMap(depth, cv.COLORMAP_HOT)
+        background = cv.applyColorMap(depth, cv.COLORMAP_AUTUMN)
+        depth = cv.addWeighted(foreground, alpha, background, beta, 0)
+
         if self.transforms:
             img = self.transforms(img)
             depth = self.transforms(depth)

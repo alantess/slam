@@ -39,7 +39,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=6,
+                        default=1,
                         help='Batch size of input')
     parser.add_argument(
         '--video',
@@ -66,8 +66,8 @@ if __name__ == '__main__':
                              std=[0.229, 0.224, 0.225])
     ])
 
-    # model = DisparityNet(n_out_channels=3, model_name='depth.pt')
-    model = URes152(n_channels=3, model_name='ureskitti.pt')
+    model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
+    # model = URes152(n_channels=3, model_name='ureskittires152.pt')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     loss_fn = torch.nn.MSELoss()
 
@@ -90,6 +90,7 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
+    # show_dataloader(val_loader)
     train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
     display_depth(model, preprocess, device, args.video, args.img_height,
                   args.img_width)
