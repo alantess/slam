@@ -16,8 +16,8 @@ Execute
 ```
 <table>
 <tr>
-<td><img src="etc/depthout.gif" width=50% height=50% /></td>  
-<td><img src="etc/vid.gif" width=50% height=50% /></td> 
+<td><img src="etc/depthout.gif" /></td>  
+<td><img src="etc/vid.gif"  /></td> 
 <tr>
 </table>
 
