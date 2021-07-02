@@ -14,7 +14,12 @@ Execute
 ```sh
    python run.py --test True
 ```
-<img src="etc/depthout.gif"/>  <img src="etc/vid.gif"/> 
+<table>
+<tr>
+<td><img src="etc/depthout.gif" width=50% height=50% /></td>  
+<td><img src="etc/vid.gif" width=50% height=50% /></td> 
+<tr>
+</table>
 
 Directory 
 --
