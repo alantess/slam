@@ -5,21 +5,15 @@
 
 Execute
 ---
-## Training
+### Training
 ```sh
    python run.py
 ```
-## Inferencing
+### Inferencing
 
 ```sh
    python run.py --test True
 ```
-<table>
-<tr>
-<td><img src="etc/depthout.gif" /></td>  
-<td><img src="etc/vid.gif"  /></td> 
-<tr>
-</table>
 
 Directory 
 --
@@ -37,7 +31,7 @@ Directory
 
 Datasets
 --
-[Kitti (Depth)](http://www.cvlibs.net/datasets/kitti/eval_depth_all.php)
+- [Kitti (Depth)](http://www.cvlibs.net/datasets/kitti/eval_depth_all.php)
 
 License
 ---
