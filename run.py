@@ -39,8 +39,12 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=1,
+                        default=6,
                         help='Batch size of input')
+    parser.add_argument('--test',
+                        type=bool,
+                        default=False,
+                        help='Trains Models')
     parser.add_argument(
         '--video',
         type=str,
@@ -67,19 +71,11 @@ if __name__ == '__main__':
     ])
 
     model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
-    # model = URes152(n_channels=3, model_name='ureskittires152.pt')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     loss_fn = torch.nn.MSELoss()
 
     trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
     valset = KittiDepthSet(args.kitti_depth_dir, preprocess, False)
-
-    # trainset = DepthDataset(args.disparity_dir, preprocess)
-    # valset = DepthDataset(args.disparity_dir, preprocess, False)
-
-    # NYU V2 Depth
-    # trainset = NYUDepth(args.nyu_dir, preprocess)
-    # valset = NYUDepth(args.nyu_dir, preprocess, False)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
@@ -90,7 +86,10 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    # show_dataloader(val_loader)
-    train(model, train_loader, val_loader, optimizer, loss_fn, device, EPOCHS)
-    display_depth(model, preprocess, device, args.video, args.img_height,
-                  args.img_width)
+    if args.test:
+        display_depth(model, preprocess, device, args.video, args.img_height,
+                      args.img_width)
+
+    else:
+        train(model, train_loader, val_loader, optimizer, loss_fn, device,
+              EPOCHS)
