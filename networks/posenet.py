@@ -1,6 +1,6 @@
 import os
 import torch
-from collection import OrderedDict
+# from collection import OrderedDict
 from torch import nn
 from torchvision import models
 
@@ -13,7 +13,7 @@ class PoseDecoder(nn.Module):
                  num_frames=1):
         super(PoseDecoder, self).__init__()
         self.activation = nn.LeakyReLU()
-        self.convs = OrderedDict()
+        self.convs = {}
         self.convs[("squeeze")] = nn.Conv2d(enc_channels, 256, 1)
         self.convs[("pose", 0)] = nn.Conv2d(num_input_features * 256, 256, 3,
                                             stride, 1)
@@ -45,11 +45,23 @@ class PoseDecoder(nn.Module):
 class PoseNet(nn.Module):
     def __init__(self, model_name='posenet.pt', chkpt='model_checkpoints'):
         super(PoseNet, self).__init__()
-        self.encoder = models.resnet152(True)
+        self.convs_reset = nn.Conv2d(6, 3, 1, 1)
+        resnet = models.resnet152(True)
+        modules = list(resnet.children())
+        self.encoder = nn.Sequential(*modules[:9])
+
         self.decoder = PoseDecoder(2048)
 
     def forward(self, img_a, img_b):
         x = torch.cat([img_a, img_b], 1)
-        feats = self.encoder(x)
+        x = self.convs_reset(x)
+        feats = self.encoder(x).unsqueeze(0)
         pose = self.decoder([feats])
         return pose
+
+
+# if __name__ == '__main__':
+#     ex = torch.randn(1, 3, 256, 256)
+#     model = PoseNet()
+#     y = model(ex, ex)
+#     print(y.size())

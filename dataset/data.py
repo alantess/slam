@@ -69,78 +69,11 @@ class KittiOdometry(Dataset):
             tgt = self.transforms(tgt)
             ref = self.transforms(ref)
             intrinsic = torch.from_numpy(intrinsic)
-            intrinsic = torch.linalg.inv(intrinsic)
+            intrinsic_inv = torch.linalg.inv(intrinsic)
         else:
-            intrinsic = np.linalg.inv(intrinsic)
+            intrinsic_inv = np.linalg.inv(intrinsic)
 
-        return tgt, ref, intrinsic
-
-
-class DepthDataset(Dataset):
-    def __init__(self, root, transforms=None, train=True):
-        self.root = root
-        self.transforms = transforms
-        self.mode = "/train/stereo_train_001/" if train else "/val/stereo_train_002/"
-        path = root + self.mode
-        self.camera = sorted(
-            glob.glob(os.path.join(path + "camera_5", "*.jpg")))
-        self.disparity = sorted(
-            glob.glob(os.path.join(path + "disparity", "*.png")))
-
-        K = np.array(
-            [2301.3147, 0, 1489.8536, 0, 2301.3147, 479.1750, 0, 0,
-             1]).reshape((3, 3))
-        self.intrinsic = np.linalg.inv(K)
-
-    def __len__(self):
-        return len(self.camera)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-        camera = cv.imread(self.camera[idx]).astype(np.float32)
-        disparity = cv.imread(self.disparity[idx]).astype(np.uint8)
-        if self.transforms:
-            camera = self.transforms(camera)
-            disparity = self.transforms(disparity)
-
-        return camera, disparity
-
-
-class NYUDepth(Dataset):
-    def __init__(self, root, transforms=None, train=True):
-        self.transforms = transforms
-        folders = [x[0] for x in os.walk(root)][1:]
-        self.folders = folders[:-1] if train else folders[-1:]
-        self.imgs = []
-        self.depth = []
-        self.total_size = 0
-        self.crawl_folders()
-
-    def crawl_folders(self):
-        for folder in self.folders:
-            real = sorted(glob.glob(os.path.join(folder, "*.ppm")))
-            depth = sorted(glob.glob(os.path.join(folder, "*.pgm")))
-            n = min(len(real), len(depth))
-            self.total_size += n
-            for i in range(n):
-                self.imgs.append(real[i])
-                self.depth.append(depth[i])
-
-    def __len__(self):
-        return self.total_size
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        img = cv.imread(self.imgs[idx])
-        depth = cv.imread(self.depth[idx], 0)
-
-        if self.transforms:
-            img = self.transforms(img)
-            depth = self.transforms(depth)
-        return img, depth
+        return tgt, ref, intrinsic, intrinsic_inv
 
 
 class KittiDepthSet(Dataset):
