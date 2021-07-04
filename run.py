@@ -46,7 +46,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=2,
+                        default=4,
                         help='Batch size of input')
     parser.add_argument('--test',
                         type=bool,
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
     model = PoseNet()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
 
     # Intrisic and Extrinsic Dataset
     trainset = KittiSeq(args.kitti_vo_dir,
@@ -109,6 +109,7 @@ if __name__ == '__main__':
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
+
     train_pose(model, train_loader, val_loader, optimizer, loss_fn, device,
                EPOCHS)
 

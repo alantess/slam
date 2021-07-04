@@ -137,7 +137,7 @@ def train_pose(pose_model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (s, s_, intrinsic, inv, pose) in enumerate(val_loop):
+            for j, (s, s_, _, _, pose) in enumerate(val_loop):
                 s = s.to(device, dtype=torch.float32)
                 s_ = s_.to(device, dtype=torch.float32)
                 pose = pose.to(device, dtype=torch.float32)
