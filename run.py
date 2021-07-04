@@ -3,6 +3,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import argparse
 from support.train import train
+from support.compute import *
 from networks.depth import DisparityNet
 from networks.ures import URes152
 from dataset.data import *
@@ -15,9 +16,9 @@ if __name__ == '__main__':
                         default="/media/alan/seagate/dataset/depth_perception",
                         help="NYU Depth dataset")
     parser.add_argument(
-        '--kitti_vo_dir',
+        '--kitti-vo-dir',
         type=str,
-        default="/media/alan/seagate/datasets/kitti/vo/kitti_vo_256",
+        default="/media/alan/seagate/datasets/kitti/vo/kitti_vo_256/",
         help='Kitti VO dataset')
     parser.add_argument('--kitti-depth-dir',
                         type=str,
@@ -39,7 +40,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=6,
+                        default=1,
                         help='Batch size of input')
     parser.add_argument('--test',
                         type=bool,
@@ -69,13 +70,25 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
+    inv_preprocess = transforms.Compose([
+        transforms.Normalize(mean=[0., 0., 0.],
+                             std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
+        transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
+    ])
 
     model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     loss_fn = torch.nn.MSELoss()
 
-    trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
-    valset = KittiDepthSet(args.kitti_depth_dir, preprocess, False)
+    # Poses
+    trainset = KittiOdometry(args.kitti_vo_dir, transforms=preprocess)
+    valset = KittiOdometry(args.kitti_vo_dir,
+                           transforms=preprocess,
+                           train=False)
+
+    # Depth
+    # trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
+    # valset = KittiDepthSet(args.kitti_depth_dir, preprocess, False)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
@@ -86,10 +99,10 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    if args.test:
-        display_depth(model, preprocess, device, args.video, args.img_height,
-                      args.img_width)
+# if args.test:
+#     display_depth(model, preprocess, device, args.video, args.img_height,
+#                   args.img_width)
 
-    else:
-        train(model, train_loader, val_loader, optimizer, loss_fn, device,
-              EPOCHS)
+# else:
+#     train(model, train_loader, val_loader, optimizer, loss_fn, device,
+#           EPOCHS)
