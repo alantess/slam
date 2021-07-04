@@ -1,6 +1,5 @@
 import os
 import torch
-# from collection import OrderedDict
 from torch import nn
 from torchvision import models
 
@@ -61,7 +60,7 @@ class PoseNet(nn.Module):
 
 
 # if __name__ == '__main__':
-#     ex = torch.randn(1, 3, 256, 256)
+#     ex = torch.randn(3, 3, 256, 256)
 #     model = PoseNet()
 #     y = model(ex, ex)
 #     print(y.size())

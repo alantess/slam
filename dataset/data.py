@@ -8,54 +8,51 @@ import torchvision
 from torch.utils.data import Dataset
 
 
-class KittiOdometry(Dataset):
+class KittiSeq(Dataset):
     def __init__(self,
                  root,
+                 pose_root=None,
                  train=True,
-                 seq_len=3,
-                 frame_skips=1,
                  transforms=None,
                  seed=99):
         random.seed(seed)
         np.random.seed(seed)
         self.root = root
+        self.pose_root = pose_root
         self.train = train
-        self.frame_skips = frame_skips
-        self.seq_len = seq_len
         self.items = None
         self.transforms = transforms
         self.mode = "train.txt" if self.train else "val.txt"
+        if pose_root:
+            self.pose_seq = sorted(glob.glob(os.path.join(pose_root, "*.txt")))
         self.folders = [f[:-1] for f in open(root + self.mode)]
+        self.items = None
+
         self.combine_folder()
 
     def combine_folder(self):
         seq_set = []
-        demi_length = (self.seq_len - 1) // 2
-        shifts = list(
-            range(-demi_length * self.frame_skips,
-                  demi_length * self.frame_skips + 1, self.frame_skips))
-        shifts.pop(demi_length)
-        # Access Each folder Images and intrinsic matrix
+
         for folder in self.folders:
+            pose_file_idx = int(folder[:2])
+            pose_file = self.pose_seq[pose_file_idx]
+            pose = np.genfromtxt(pose_file).astype(np.float32)
+
             access_point = self.root + folder
             imgs = sorted(glob.glob(os.path.join(access_point, "*.jpg")))
             cam_file = os.path.join(access_point, "cam.txt")
             intrinsic = np.genfromtxt(cam_file).astype(np.float32).reshape(
                 (3, 3))
-            if len(imgs) < self.seq_len:
-                continue
-            for i in range(demi_length * self.frame_skips,
-                           len(imgs) - demi_length * self.frame_skips):
+            n = len(imgs)
+            for i in range(0, n - 1, 2):
                 sample = {
-                    'intrinsic': intrinsic,
-                    'tgt': imgs[i],
-                    'ref_img': []
+                    "intrinsic": intrinsic,
+                    "tgt": imgs[i],
+                    "ref": imgs[i + 1],
+                    "pose": pose[i + 1].reshape(3, 4)
                 }
-                for j in shifts:
-                    sample['ref_img'].append(imgs[i + j])
                 seq_set.append(sample)
-            random.shuffle(seq_set)
-            self.items = seq_set
+        self.items = seq_set
 
     def __len__(self):
         return len(self.items)
@@ -63,17 +60,19 @@ class KittiOdometry(Dataset):
     def __getitem__(self, idx):
         sample = self.items[idx]
         tgt = cv.imread(sample['tgt']).astype(np.float32)
-        ref = cv.imread(sample['ref_img'][0]).astype(np.float32)
+        ref = cv.imread(sample['ref']).astype(np.float32)
         intrinsic = np.copy(sample['intrinsic'])
+        pose = sample["pose"]  # extrinsic
         if self.transforms:
             tgt = self.transforms(tgt)
             ref = self.transforms(ref)
             intrinsic = torch.from_numpy(intrinsic)
+            pose = torch.from_numpy(pose)
             intrinsic_inv = torch.linalg.inv(intrinsic)
         else:
             intrinsic_inv = np.linalg.inv(intrinsic)
 
-        return tgt, ref, intrinsic, intrinsic_inv
+        return tgt, ref, intrinsic, intrinsic_inv, pose
 
 
 class KittiDepthSet(Dataset):

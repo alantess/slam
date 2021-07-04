@@ -114,23 +114,18 @@ def train_pose(pose_model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (s, s_, intrinsic, inv) in enumerate(loop):
+        for i, (s, s_, _, _, pose) in enumerate(loop):
             s = s.to(device, dtype=torch.float32)
             s_ = s_.to(device, dtype=torch.float32)
-            intrinsic = intrinsic.to(device, dtype=torch.float32)  # [B,3,3]
-            inv = inv.to(device, dtype=torch.float32)  # [B,3,3]
+            pose = pose.to(device, dtype=torch.float32)
 
             for p in pose_model.parameters():
                 p.grad = None
 
             with autocast():
-                poses, pose_inv = compute_pose_with_inv(pose_model, s,
-                                                        s_)  # B[1,6]
-                # Call intrinsic warp 2 to compute correct values
-
-                loss_1 = loss_fn(poses, intrinsic)
-                loss_2 = loss_fn(pose_inv, inv)
-                loss = loss_1 + loss_2
+                pred_pose = pose_model(s_, s)
+                pred_pose = pose_vec2mat(pred_pose)
+                loss = loss_fn(pred_pose, pose)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -142,16 +137,15 @@ def train_pose(pose_model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (s, s_, intrinsic, inv) in enumerate(val_loop):
+            for j, (s, s_, intrinsic, inv, pose) in enumerate(val_loop):
                 s = s.to(device, dtype=torch.float32)
                 s_ = s_.to(device, dtype=torch.float32)
+                pose = pose.to(device, dtype=torch.float32)
 
                 with autocast():
-                    v_poses, v_pose_inv = compute_pose_with_inv(
-                        pose_model, s, s_)
-                    v_loss1 = loss_fn(v_poses, intrinsic)
-                    v_loss2 = loss_fn(v_pose_inv, inv)
-                    v_loss = v_loss1 + v_loss2
+                    v_poses = pose_model(s_, s)
+                    v_poses = pose_vec2mat(v_poses)
+                    v_loss = loss_fn(v_poses, pose)
 
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
