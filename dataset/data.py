@@ -59,8 +59,8 @@ class KittiSeq(Dataset):
 
     def __getitem__(self, idx):
         sample = self.items[idx]
-        tgt = cv.imread(sample['tgt']).astype(np.float32)
-        ref = cv.imread(sample['ref']).astype(np.float32)
+        tgt = cv.imread(sample['tgt'])
+        ref = cv.imread(sample['ref'])
         intrinsic = np.copy(sample['intrinsic'])
         pose = sample["pose"]  # extrinsic
         if self.transforms:
@@ -69,7 +69,7 @@ class KittiSeq(Dataset):
             ref = self.transforms(ref)
             intrinsic = torch.from_numpy(intrinsic)
             pose = torch.from_numpy(pose)
-            pose = (pose - 0.406) / 0.224
+            pose = (pose - 0.4) / 0.22
             intrinsic_inv = torch.linalg.inv(intrinsic)
         else:
             intrinsic_inv = np.linalg.inv(intrinsic)

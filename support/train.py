@@ -102,7 +102,7 @@ def train_pose(pose_model,
     """
     scaler = GradScaler()
     best_score = np.inf
-    pose_model = pose_model.to(device)
+    pose_model.to(device)
 
     if load_model:
         pose_model.load()
@@ -114,18 +114,20 @@ def train_pose(pose_model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (s, s_, _, _, pose) in enumerate(loop):
-            s = s.to(device, dtype=torch.float32)
-            s_ = s_.to(device, dtype=torch.float32)
-            pose = pose.to(device, dtype=torch.float32)
+        for i, (s, s_, intrinsics, inv, pose) in enumerate(loop):
+            s = s.to(device)
+            s_ = s_.to(device)
+            intrinsics = intrinsics.to(device)
+            inv = inv.to(device)
+            pose = pose.to(device)
 
             for p in pose_model.parameters():
                 p.grad = None
 
             with autocast():
-                pred_pose = pose_model(s_, s)
-                pred_pose = pose_vec2mat(pred_pose)
-                loss = loss_fn(pred_pose, pose)
+                pred_pose = pose_model(s, s_)
+                loss = (pred_pose.mean() - pose.mean()).abs()
+                # loss = loss_fn(pred, target)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -137,15 +139,16 @@ def train_pose(pose_model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (s, s_, _, _, pose) in enumerate(val_loop):
-                s = s.to(device, dtype=torch.float32)
-                s_ = s_.to(device, dtype=torch.float32)
-                pose = pose.to(device, dtype=torch.float32)
+            for j, (s, s_, intrinsics, inv, pose) in enumerate(val_loop):
+                s = s.to(device)
+                s_ = s_.to(device)
+                intrinsics = intrinsics.to(device)
+                inv = inv.to(device)
+                pose = pose.to(device)
 
                 with autocast():
-                    v_poses = pose_model(s_, s)
-                    v_poses = pose_vec2mat(v_poses)
-                    v_loss = loss_fn(v_poses, pose)
+                    v_poses = pose_model(s, s_)
+                    v_loss = (v_poses.mean() - pose.mean()).abs()
 
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())

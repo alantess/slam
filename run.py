@@ -3,8 +3,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import argparse
 from support.train import *
-from support.compute import *
 from networks.depth import DisparityNet
+from vision.visuals import *
 from networks.posenet import PoseNet
 from networks.ures import URes152
 from dataset.data import *
@@ -83,10 +83,10 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
     ])
 
-    # model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
+    depth_model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
     model = PoseNet()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    loss_fn = torch.nn.SmoothL1Loss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=9e-5)
+    loss_fn = torch.nn.MSELoss()
 
     # Intrisic and Extrinsic Dataset
     trainset = KittiSeq(args.kitti_vo_dir,
@@ -109,6 +109,8 @@ if __name__ == '__main__':
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
+
+    img, ref, intrinsic, inv, pose = next(iter(val_loader))
 
     train_pose(model, train_loader, val_loader, optimizer, loss_fn, device,
                EPOCHS)

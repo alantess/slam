@@ -2,10 +2,11 @@ import numpy as np
 import time
 import torch
 from torchvision import transforms
-from common.helpers.support import apply_sharpen_filter
+# from common.helpers.support import apply_sharpen_filter
+from support.compute import *
 import cv2 as cv
 import open3d as o3d
-from slam.extract.features import *
+# from extract.features import *
 
 W, H = 720, 480
 VIDEO = '../etc/videos/test.mp4'
@@ -121,3 +122,40 @@ class FeatDisplay(object):
         self.vis.add_geometry(self.geometry)
         self.vis.poll_events()
         self.vis.update_renderer()
+
+
+def project_image(img, ref, intrinsic, inv, pose, depth_model):
+    device = torch.device('cuda')
+    img = img.to(device)
+    intrinsic = intrinsic.to(device)
+    inv = inv.to(device)
+    pose = pose.to(device)
+    depth_model.to(device)
+    depth_model.eval()
+    depth = depth_model(img)
+    gray = transforms.Grayscale()
+    depth = gray(depth)
+
+    cam_coords = pixel2cam(depth.squeeze(1), inv)
+    proj_cam_to_src_pixel = intrinsic @ pose
+
+    padding_mode = "zeros"
+    rot, tr = proj_cam_to_src_pixel[:, :, :3], proj_cam_to_src_pixel[:, :, -1:]
+    src_pixel_coords = cam2pixel(cam_coords,
+                                 rot,
+                                 tr,
+                                 padding_mode=padding_mode)  # [B,H,W,2]
+    projected_img = F.grid_sample(img, src_pixel_coords)
+    valid_points = src_pixel_coords.abs().max(dim=-1)[0] <= 1
+    valid_mask = valid_points.unsqueeze(1).float()
+
+    cam_coords = projected_img.flatten(2)
+
+    cam_coords = cam_coords[0].detach().cpu().numpy()
+
+    cam_coords = cam_coords[:, np.where(cam_coords[2] <= 110)[0]]
+    pcd_cam = o3d.geometry.PointCloud()
+    pcd_cam.points = o3d.utility.Vector3dVector(cam_coords.T[:, :3])
+    pcd_cam.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0],
+                       [0, 0, 0, 1]])
+    o3d.visualization.draw_geometries([pcd_cam])

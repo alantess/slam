@@ -292,6 +292,70 @@ def cam2pixel2(cam_coords, proj_c2p_rot, proj_c2p_tr, padding_mode):
     return pixel_coords.reshape(b, h, w, 2), Z.reshape(b, 1, h, w)
 
 
+def get_projection(img,
+                   depth,
+                   ref_depth,
+                   pose,
+                   intrinsics,
+                   padding_mode='zeros'):
+    """
+    Inverse warp a source image to the target image plane.
+    Args:
+        img: the source image (where to sample pixels) -- [B, 3, H, W]
+        depth: depth map of the target image -- [B, 1, H, W]
+        ref_depth: the source depth map (where to sample depth) -- [B, 1, H, W] 
+        pose: 6DoF pose parameters from target to source -- [B, 6]
+        intrinsics: camera intrinsic matrix -- [B, 3, 3]
+    Returns:
+        projected_img: Source image warped to the target image plane
+        valid_mask: Float array indicating point validity
+        projected_depth: sampled depth from source image  
+        computed_depth: computed depth of source image using the target depth
+    """
+
+    batch_size, _, img_height, img_width = img.size()
+
+    gray = transforms.Grayscale()
+    depth = gray(depth)
+    ref_depth = gray(ref_depth)
+
+    cam_coords = pixel2cam(depth.squeeze(1), intrinsics.inverse())  # [B,3,H,W]
+
+    # pose_mat = pose_to_mat(pose)  # [B,3,4]
+    pose_mat = pose
+
+    # Get projection matrix for tgt camera frame to source pixel frame
+    # Dot product of the intrinsic and extrinsic matrix  --> Projection Matrix
+    # P = k[R|t]
+    proj_cam_to_src_pixel = intrinsics @ pose_mat  # [B, 3, 4]
+
+    # Get Rotation 3x3 and Translation 3x1 Vector
+    rot, tr = proj_cam_to_src_pixel[:, :, :3], proj_cam_to_src_pixel[:, :, -1:]
+    src_pixel_coords, computed_depth = cam2pixel2(cam_coords, rot, tr,
+                                                  padding_mode)  # [B,H,W,2]
+    projected_img = F.grid_sample(img,
+                                  src_pixel_coords,
+                                  padding_mode=padding_mode,
+                                  align_corners=False)
+
+    return projected_img
+
+
+def compute_loss(img,
+                 depth,
+                 ref_depth,
+                 pose,
+                 true_pose,
+                 intrinsics,
+                 padding_mode='zeros'):
+    true = get_projection(img, depth, ref_depth, true_pose, intrinsics,
+                          padding_mode)
+    prediction = get_projection(img, depth, ref_depth, pose, intrinsics,
+                                padding_mode)
+
+    return prediction, true
+
+
 def inverse_warp2(img,
                   depth,
                   ref_depth,
@@ -317,7 +381,8 @@ def inverse_warp2(img,
 
     cam_coords = pixel2cam(depth.squeeze(1), intrinsics.inverse())  # [B,3,H,W]
 
-    pose_mat = pose_to_mat(pose)  # [B,3,4]
+    # pose_mat = pose_to_mat(pose)  # [B,3,4]
+    pose_mat = pose
 
     # Get projection matrix for tgt camera frame to source pixel frame
     # Dot product of the intrinsic and extrinsic matrix  --> Projection Matrix
@@ -342,3 +407,81 @@ def inverse_warp2(img,
                                     align_corners=False)
 
     return projected_img, valid_mask, projected_depth, computed_depth
+
+
+# Compute Loss
+def compute_pair_loss(tgt, ref, tgt_depth, ref_depth, pose, intrinsic):
+    ref_img_warped, valid_mask, projected_depth, computed_depth = inverse_warp2(
+        ref, tgt_depth, ref_depth, pose, intrinsic)
+
+    diff_img = (tgt - ref_img_warped).abs().clamp(0, 1)
+    diff_depth = ((computed_depth - projected_depth).abs() /
+                  (computed_depth + projected_depth)).clamp(0, 1)
+
+    valid_mask = (diff_img.mean(dim=1, keepdim=True) < (tgt - ref).abs().mean(
+        dim=1, keepdim=True)).float() * valid_mask
+
+    # compute all loss
+    reconstruction_loss = mean_on_mask(diff_img, valid_mask)
+    geometry_consistency_loss = mean_on_mask(diff_depth, valid_mask)
+
+    return reconstruction_loss, geometry_consistency_loss
+
+
+# compute mean value given a binary mask
+def mean_on_mask(diff, valid_mask):
+    mask = valid_mask.expand_as(diff)
+    if mask.sum() > 10000:
+        mean_value = (diff * mask).sum() / mask.sum()
+    else:
+        mean_value = torch.tensor(0).float()
+    return mean_value
+
+
+def compute_loss2(tgt, ref, tgt_depth, ref_depth, intrinsic, poses, poses_inv,
+                  max_scales):
+    photo_loss = 0
+    geometry_loss = 0
+    num_scales = min(len(tgt_depth), max_scales)
+    for ref_img, ref_depth, pose, pose_inv in zip(ref, ref_depth, poses,
+                                                  poses_inv):
+        for s in range(num_scales):
+
+            # # downsample img
+            # b, _, h, w = tgt_depth[s].size()
+            # downscale = tgt_img.size(2)/h
+            # if s == 0:
+            #     tgt_img_scaled = tgt_img
+            #     ref_img_scaled = ref_img
+            # else:
+            #     tgt_img_scaled = F.interpolate(tgt_img, (h, w), mode='area')
+            #     ref_img_scaled = F.interpolate(ref_img, (h, w), mode='area')
+            # intrinsic_scaled = torch.cat((intrinsics[:, 0:2]/downscale, intrinsics[:, 2:]), dim=1)
+            # tgt_depth_scaled = tgt_depth[s]
+            # ref_depth_scaled = ref_depth[s]
+
+            # upsample depth
+            b, _, h, w = tgt.size()
+            tgt_img_scaled = tgt
+            ref_img_scaled = ref
+            intrinsic_scaled = intrinsic
+            if s == 0:
+                tgt_depth_scaled = tgt_depth[s]
+                ref_depth_scaled = ref_depth[s]
+            else:
+                tgt_depth_scaled = F.interpolate(tgt_depth[s], (h, w),
+                                                 mode='nearest')
+                ref_depth_scaled = F.interpolate(ref_depth[s], (h, w),
+                                                 mode='nearest')
+
+                photo_loss1, geometry_loss1 = compute_pair_loss(
+                    tgt_img_scaled, ref_img_scaled, tgt_depth_scaled,
+                    ref_depth_scaled, pose, intrinsic_scaled)
+                photo_loss2, geometry_loss2 = compute_pair_loss(
+                    ref_img_scaled, tgt_img_scaled, ref_depth_scaled,
+                    tgt_depth_scaled, pose_inv, intrinsic_scaled)
+
+            photo_loss += (photo_loss1 + photo_loss2)
+            geometry_loss += (geometry_loss1 + geometry_loss2)
+
+    return photo_loss, geometry_loss
