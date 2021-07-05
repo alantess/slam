@@ -64,10 +64,12 @@ class KittiSeq(Dataset):
         intrinsic = np.copy(sample['intrinsic'])
         pose = sample["pose"]  # extrinsic
         if self.transforms:
+
             tgt = self.transforms(tgt)
             ref = self.transforms(ref)
             intrinsic = torch.from_numpy(intrinsic)
             pose = torch.from_numpy(pose)
+            pose = (pose - 0.406) / 0.224
             intrinsic_inv = torch.linalg.inv(intrinsic)
         else:
             intrinsic_inv = np.linalg.inv(intrinsic)
