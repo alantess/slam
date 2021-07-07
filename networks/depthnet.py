@@ -27,7 +27,7 @@ class DepthNet(nn.Module):
         self.encoder = Encoder()
         self.decoder = nn.ModuleDict(convs)
         self.output_layer_1 = nn.Conv2d(128, 64, 1, 1)
-        self.output_layer_2 = nn.Conv2d(64, 3, 1, 1)
+        self.output_layer_2 = nn.Conv2d(64, 1, 1, 1)
 
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, model_name)
@@ -52,8 +52,8 @@ class DepthNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-# if __name__ == '__main__':
-#     model = DepthNet()
-#     x = torch.randn(1, 3, 832, 256)
-#     out = model(x, x)
-#     print(out.size())
+if __name__ == '__main__':
+    model = DepthNet()
+    x = torch.randn(1, 3, 832, 256)
+    out = model(x, x)
+    print(out.size())

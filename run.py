@@ -76,7 +76,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(optim_params)
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
 
     # Dataset
