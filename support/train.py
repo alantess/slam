@@ -29,7 +29,7 @@ def train(pose_model,
     best_score = np.inf
     pose_model = pose_model.to(device)
     depth_model = depth_model.to(device)
-    w1, w2, w3, w4 = 0.9, 0.2, 0.1, 0.1
+    w1, w2, w3 = 0.2, 0.1, 0.1,
 
     if load_model:
         pose_model.load()
@@ -62,7 +62,6 @@ def train(pose_model,
                 depth_loss1 = loss_fn(pred_depth, depth)
                 Rt_loss1 = compute_ate(pose, Rt)
                 Rt_loss2 = compute_translation(pose, Rt)
-                # projection_loss = compute_projection(pose, Rt, intrinsic)
                 loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -89,7 +88,6 @@ def train(pose_model,
                     depth_loss1 = loss_fn(pred_depth, depth)
                     Rt_loss1 = compute_ate(pose, Rt)
                     Rt_loss2 = compute_translation(pose, Rt)
-                    # v_proj_loss = compute_projection(pose, Rt, intrinsic)
                     v_loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())

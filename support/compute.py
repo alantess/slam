@@ -25,14 +25,6 @@ def compute_translation(pred_pose, gt_pose):
     return loss(gt_pose[:, :, -1:], pred_pose[:, :, -1:])
 
 
-# Projection Loss
-def compute_projection(pred, gt, intrinsic):
-    # P = kRt
-    pred = intrinsic @ pred
-    gt = intrinsic @ gt
-    return loss(pred, gt)
-
-
 @torch.no_grad()
 def get_depth(
     img,
