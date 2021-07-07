@@ -9,8 +9,7 @@ def train(pose_model,
           depth_model,
           train_loader,
           val_loader,
-          pose_optimizer,
-          depth_optimizer,
+          optimizer,
           loss_fn,
           device,
           epochs,
@@ -30,6 +29,7 @@ def train(pose_model,
     best_score = np.inf
     pose_model = pose_model.to(device)
     depth_model = depth_model.to(device)
+    w1, w2, w3, w4 = 0.9, 0.2, 0.1, 0.1
 
     if load_model:
         pose_model.load()
@@ -42,9 +42,10 @@ def train(pose_model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (img, tgt, depth, Rt, _, _) in enumerate(loop):
+        for i, (img, tgt, depth, Rt, intrinsic, _) in enumerate(loop):
             img = img.to(device, dtype=torch.float32)
             tgt = tgt.to(device, dtype=torch.float32)
+            intrinsic = intrinsic.to(device, dtype=torch.float16)
             depth = depth.to(device)
             Rt = Rt.to(device, dtype=torch.float32)
 
@@ -61,11 +62,10 @@ def train(pose_model,
                 depth_loss1 = loss_fn(pred_depth, depth)
                 Rt_loss1 = compute_ate(pose, Rt)
                 Rt_loss2 = compute_translation(pose, Rt)
-                loss = depth_loss1 + Rt_loss1 + Rt_loss2
-
+                # projection_loss = compute_projection(pose, Rt, intrinsic)
+                loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
             scaler.scale(loss).backward()
-            scaler.step(pose_optimizer)
-            scaler.step(depth_optimizer)
+            scaler.step(optimizer)
 
             scaler.update()
 
@@ -75,9 +75,10 @@ def train(pose_model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (img, tgt, depth, Rt, _, _) in enumerate(val_loop):
+            for j, (img, tgt, depth, Rt, intrinsic, _) in enumerate(val_loop):
                 img = img.to(device, dtype=torch.float32)
                 tgt = tgt.to(device, dtype=torch.float32)
+                intrinsic = intrinsic.to(device, dtype=torch.float16)
                 depth = depth.to(device)
                 Rt = Rt.to(device, dtype=torch.float32)
 
@@ -88,15 +89,23 @@ def train(pose_model,
                     depth_loss1 = loss_fn(pred_depth, depth)
                     Rt_loss1 = compute_ate(pose, Rt)
                     Rt_loss2 = compute_translation(pose, Rt)
-                    v_loss = depth_loss1 + Rt_loss1 + Rt_loss2
-
+                    # v_proj_loss = compute_projection(pose, Rt, intrinsic)
+                    v_loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 
         # Save the model depending on performance
         if val_loss < best_score:
             best_score = val_loss
-            model.save()
+            pose_model.save()
+            depth_model.save()
+            # Save epoch, optimizer, and loss
+            torch.save(
+                {
+                    'epoch': epoch,
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'loss': loss,
+                }, "model_checkpoints/gen_data")
             print("MODEL SAVED.")
 
         print(

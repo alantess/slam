@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=4,
+                        default=2,
                         help='Batch size of input')
     parser.add_argument('--test',
                         type=bool,
@@ -65,10 +65,18 @@ if __name__ == '__main__':
 
     depth_model = DepthNet()
     pose_model = PoseNet(n_layers=4)
-    pose_optimizer = torch.optim.Adam(pose_model.parameters(), lr=9e-5)
-    depth_optimizer = torch.optim.Adam(depth_model.parameters(), lr=9e-5)
+    print('=> Setting adam solver')
+    optim_params = [{
+        'params': depth_model.parameters(),
+        'lr': 1e-4
+    }, {
+        'params': pose_model.parameters(),
+        'lr': 1e-4
+    }]
+    optimizer = torch.optim.Adam(optim_params)
 
     loss_fn = torch.nn.SmoothL1Loss()
+    print('=> Gatheing Datset')
 
     # Dataset
     trainset = KittiSet(args.kitti_dir, preprocess)
@@ -88,5 +96,5 @@ if args.test:
                   args.img_width)
 
 else:
-    train(pose_model, depth_model, train_loader, val_loader, pose_optimizer,
-          depth_optimizer, loss_fn, device, EPOCHS)
+    train(pose_model, depth_model, train_loader, val_loader, optimizer,
+          loss_fn, device, EPOCHS)
