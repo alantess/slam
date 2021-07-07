@@ -74,8 +74,9 @@ if __name__ == '__main__':
         'lr': 1e-4
     }]
     optimizer = torch.optim.Adam(optim_params)
+    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.SmoothL1Loss()
+    loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
     # Dataset
@@ -96,5 +97,7 @@ if args.test:
                   args.img_width)
 
 else:
-    train(pose_model, depth_model, train_loader, val_loader, optimizer,
-          loss_fn, device, EPOCHS)
+    train_depth(depth_model, train_loader, val_loader, depth_optim, loss_fn,
+                device, EPOCHS)
+    # train(pose_model, depth_model, train_loader, val_loader, optimizer,
+    #       loss_fn, device, EPOCHS)

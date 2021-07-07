@@ -1,6 +1,5 @@
 from scipy.spatial.transform import Rotation as R
 from torchvision import transforms
-import torch.nn.functional as F
 import numpy as np
 import torch
 import cv2 as cv
