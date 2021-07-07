@@ -3,38 +3,18 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import argparse
 from support.train import *
-from networks.depth import DisparityNet
 from vision.visuals import *
-from networks.posenet import PoseNet
-from networks.ures import URes152
 from dataset.data import *
 from vision.depth import *
+from networks.posenet import PoseNet
+from networks.depthnet import DepthNet
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SLAM')
-    parser.add_argument('--disparity-dir',
-                        type=str,
-                        default="/media/alan/seagate/dataset/depth_perception",
-                        help="NYU Depth dataset")
-    parser.add_argument(
-        '--kitti-vo-dir',
-        type=str,
-        default="/media/alan/seagate/datasets/kitti/vo/kitti_vo_256/",
-        help='Kitti VO dataset')
-    parser.add_argument('--kitti-depth-dir',
+    parser.add_argument('--kitti-dir',
                         type=str,
                         default="/media/alan/seagate/datasets/kitti/cpp/",
                         help='Kitti VO dataset')
-
-    parser.add_argument('--nyu-dir',
-                        type=str,
-                        default="/media/alan/seagate/Downloads/nyudepth",
-                        help='Kitti VO dataset')
-    parser.add_argument(
-        '--pose-dir',
-        type=str,
-        default="/media/alan/seagate/datasets/kitti/pose/dataset/poses/",
-        help='Kitti VO dataset')
 
     parser.add_argument("--img-height",
                         default=256,
@@ -83,23 +63,16 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
     ])
 
-    depth_model = DisparityNet(n_out_channels=3, model_name='depthres50.pt')
-    model = PoseNet()
-    optimizer = torch.optim.Adam(model.parameters(), lr=9e-5)
-    loss_fn = torch.nn.MSELoss()
+    depth_model = DepthNet()
+    pose_model = PoseNet(n_layers=4)
+    pose_optimizer = torch.optim.Adam(pose_model.parameters(), lr=9e-5)
+    depth_optimizer = torch.optim.Adam(depth_model.parameters(), lr=9e-5)
 
-    # Intrisic and Extrinsic Dataset
-    trainset = KittiSeq(args.kitti_vo_dir,
-                        args.pose_dir,
-                        transforms=preprocess)
-    valset = KittiSeq(args.kitti_vo_dir,
-                      args.pose_dir,
-                      train=False,
-                      transforms=preprocess)
+    loss_fn = torch.nn.SmoothL1Loss()
 
-    # Depth
-    # trainset = KittiDepthSet(args.kitti_depth_dir, preprocess)
-    # valset = KittiDepthSet(args.kitti_depth_dir, preprocess, False)
+    # Dataset
+    trainset = KittiSet(args.kitti_dir, preprocess)
+    valset = KittiSet(args.kitti_dir, preprocess, False)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
@@ -110,15 +83,10 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    img, ref, intrinsic, inv, pose = next(iter(val_loader))
+if args.test:
+    display_depth(model, preprocess, device, args.video, args.img_height,
+                  args.img_width)
 
-    train_pose(model, train_loader, val_loader, optimizer, loss_fn, device,
-               EPOCHS)
-
-# if args.test:
-#     display_depth(model, preprocess, device, args.video, args.img_height,
-#                   args.img_width)
-
-# else:
-#     train(model, train_loader, val_loader, optimizer, loss_fn, device,
-#           EPOCHS)
+else:
+    train(pose_model, depth_model, train_loader, val_loader, pose_optimizer,
+          depth_optimizer, loss_fn, device, EPOCHS)

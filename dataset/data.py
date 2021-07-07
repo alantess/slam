@@ -8,110 +8,79 @@ import torchvision
 from torch.utils.data import Dataset
 
 
-class KittiSeq(Dataset):
+class KittiSet(Dataset):
     def __init__(self,
                  root,
-                 pose_root=None,
-                 train=True,
                  transforms=None,
-                 seed=99):
-        random.seed(seed)
-        np.random.seed(seed)
-        self.root = root
-        self.pose_root = pose_root
-        self.train = train
-        self.items = None
+                 train=True,
+                 frame_skip=True,
+                 mean=0.485,
+                 std=0.229):
         self.transforms = transforms
-        self.mode = "train.txt" if self.train else "val.txt"
-        if pose_root:
-            self.pose_seq = sorted(glob.glob(os.path.join(pose_root, "*.txt")))
-        self.folders = [f[:-1] for f in open(root + self.mode)]
-        self.items = None
-
-        self.combine_folder()
-
-    def combine_folder(self):
-        seq_set = []
-
-        for folder in self.folders:
-            pose_file_idx = int(folder[:2])
-            pose_file = self.pose_seq[pose_file_idx]
-            pose = np.genfromtxt(pose_file).astype(np.float32)
-
-            access_point = self.root + folder
-            imgs = sorted(glob.glob(os.path.join(access_point, "*.jpg")))
-            cam_file = os.path.join(access_point, "cam.txt")
-            intrinsic = np.genfromtxt(cam_file).astype(np.float32).reshape(
-                (3, 3))
-            n = len(imgs)
-            for i in range(0, n - 1, 2):
-                sample = {
-                    "intrinsic": intrinsic,
-                    "tgt": imgs[i],
-                    "ref": imgs[i + 1],
-                    "pose": pose[i + 1].reshape(3, 4)
-                }
-                seq_set.append(sample)
-        self.items = seq_set
-
-    def __len__(self):
-        return len(self.items)
-
-    def __getitem__(self, idx):
-        sample = self.items[idx]
-        tgt = cv.imread(sample['tgt'])
-        ref = cv.imread(sample['ref'])
-        intrinsic = np.copy(sample['intrinsic'])
-        pose = sample["pose"]  # extrinsic
-        if self.transforms:
-
-            tgt = self.transforms(tgt)
-            ref = self.transforms(ref)
-            intrinsic = torch.from_numpy(intrinsic)
-            pose = torch.from_numpy(pose)
-            pose = (pose - 0.4) / 0.22
-            intrinsic_inv = torch.linalg.inv(intrinsic)
-        else:
-            intrinsic_inv = np.linalg.inv(intrinsic)
-
-        return tgt, ref, intrinsic, intrinsic_inv, pose
-
-
-class KittiDepthSet(Dataset):
-    def __init__(self, root, transforms=None, train=True):
-        self.transforms = transforms
+        self.mean = mean
+        self.std = std
         self.mode = 'train.txt' if train else 'val.txt'
         self.folders = [root + f[:-1] for f in open(root + self.mode)]
         self.total_size = 0
-        self.imgs = []
-        self.depth = []
+        self.frame_skip = frame_skip
+        self.samples = None
         self._crawl_folders()
 
     def _crawl_folders(self):
+        seq_set = []
         for folder in self.folders:
-            real = sorted(glob.glob(os.path.join(folder, "*.jpg")))
+            imgs = sorted(glob.glob(os.path.join(folder, "*.jpg")))
             depth = sorted(glob.glob(os.path.join(folder, "*.png")))
-            assert len(real) == len(depth)
-            n = len(real)
-            self.total_size += n
-            for i in range(n):
-                self.imgs.append(real[i])
-                self.depth.append(depth[i])
+            poses_file = os.path.join(folder, "poses.txt")
+            cam_file = os.path.join(folder, "cam.txt")
+            k = np.genfromtxt(cam_file).reshape((3, 3))
+            poses = np.genfromtxt(poses_file)
+
+            assert len(imgs) == len(depth)
+            n = len(poses)
+            if self.frame_skip:
+                inc = 3
+            else:
+                inc = 1
+            for i in range(0, n - 1, inc):
+                sample = {
+                    "frame": imgs[i],
+                    "next_frame": imgs[i + 1],
+                    "depth": depth[i + 1],
+                    "poses": poses[i + 1].reshape((3, 4)),
+                    "intrinsic": k,
+                }
+                seq_set.append(sample)
+
+        self.samples = seq_set
 
     def __len__(self):
-        return self.total_size
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        alpha = 0.65
-        beta = 1 - alpha
-        img = cv.imread(self.imgs[idx])
-        depth = cv.imread(self.depth[idx])
-        foreground = cv.applyColorMap(depth, cv.COLORMAP_HOT)
-        background = cv.applyColorMap(depth, cv.COLORMAP_AUTUMN)
-        depth = cv.addWeighted(foreground, alpha, background, beta, 0)
+        sample = self.samples[idx]
+        s = cv.imread(sample["frame"])
+        s_ = cv.imread(sample["next_frame"])
+        depth = cv.imread(sample["depth"])
+        Rt = sample["poses"]
+        k = sample["intrinsic"]
+        k_inv = np.linalg.inv(k)
 
         if self.transforms:
-            img = self.transforms(img)
+            grayscale = torchvision.transforms.Grayscale()
+            s = self.transforms(s)
+            s_ = self.transforms(s_)
             depth = self.transforms(depth)
+            depth = grayscale(depth)
+            Rt = (Rt - self.mean) / self.std
+            k = (k - self.mean) / self.std
+            Rt = torch.from_numpy(Rt)
+            k = torch.from_numpy(k)
+            k_inv = torch.from_numpy(k_inv)
 
-        return img, depth
+        return s, s_, depth, Rt, k, k_inv
+
+
+# if __name__ == '__main__':
+# path = "/media/alan/seagate/datasets/kitti/cpp/"
+# dataset = KittiSet(path)
