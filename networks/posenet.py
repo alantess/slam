@@ -15,27 +15,46 @@ class PoseNet(nn.Module):
         self.chkpt_dir = chkpt
         self.file = os.path.join(chkpt, model_name)
         self.actiivation = nn.SELU()
-        self.gru = nn.GRU(208, 32, n_layers, batch_first=True)
+        # Set up RNN
+        self.gru = nn.GRU(212992, 1024, n_layers, batch_first=True)
+        self.gru_original = nn.GRU(53248, 1024, n_layers, batch_first=True)
+        deconvs = {}
         mlps = {}
-        layers = [4096, 1024, 512, 256, 32]
+        neurons = [1024, 512, 256, 128, 32]
+        # Set up FC
+        for i in range(len(neurons) - 1):
+            layer_name = "fc" + str(i)
+            mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
+        # Set up Deconvs
+        layers = [4096, 2048, 1024, 512, 256, 32]
         for i in range(len(layers) - 1):
             layer_name = "layer" + str(i)
-            mlps[layer_name] = nn.Linear(layers[i], layers[i + 1])
+            deconvs[layer_name] = nn.ConvTranspose2d(layers[i], layers[i + 1],
+                                                     2, 2)
+        self.conv_og = nn.Conv2d(3, 32, 2, 2)
 
-        self.fc = nn.ModuleDict(mlps)
+        self.decoder = nn.ModuleDict(deconvs)
+        self.fcl = nn.ModuleDict(mlps)
         self.out = nn.Linear(32, 12)
         self.encoder = Encoder()
 
     def forward(self, s, s_):
         x = self.encoder(s, s_)
-        x = x.flatten(2)
-        x, h0 = self.gru(x)
-        x = x.permute((0, 2, 1))
-        for i in self.fc:
-            x = self.actiivation(self.fc[i](x))
+        s = self.actiivation(self.conv_og(s)).flatten(2)
+        s_ = self.actiivation(self.conv_og(s_)).flatten(2)
+        s0, h0 = self.gru_original(s)
+        s1, h1 = self.gru_original(s_, h0)
 
+        for i in self.decoder:
+            x = self.actiivation(self.decoder[i](x))
+
+        x = x.flatten(2)
+        x, _ = self.gru(x, h1)
         x = x.mean(1)
-        x = self.out(x).reshape(-1, 3, 4)
+        for i in self.fcl:
+            x = self.actiivation(self.fcl[i](x))
+
+        x = self.out(x).view(-1, 3, 4)
 
         return x
 
@@ -49,7 +68,7 @@ class PoseNet(nn.Module):
 
 
 # if __name__ == '__main__':
-#     ex = torch.randn(7, 3, 832, 256)
-#     model = PoseNet()
-#     y = model(ex, ex)
-#     print(y.size())
+# ex = torch.randn(7, 3, 256, 832)
+# model = PoseNet()
+# y = model(ex, ex)
+# print(y.size())
