@@ -2,12 +2,6 @@ import os
 import torch
 from .encoder import Encoder
 from torch import nn
-"""
-
-Takes in a concatenated image (st,st+1)
-outputs the depth map of that image
-Use the focal loss and smooth l1 loss
-"""
 
 
 class DepthNet(nn.Module):
@@ -17,29 +11,42 @@ class DepthNet(nn.Module):
                  model_name="depthnet.pt"):
         super(DepthNet, self).__init__()
         channels = [4096, 2048, 1024, 512, 256, 128]
-        convs = {}
+        deconvs = {}
         self.activation = nn.SELU()
-        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
         for i in range(len(channels) - 1):
             layer_name = "layer" + str(i)
-            convs[layer_name] = nn.Conv2d(channels[i], channels[i + 1], 1, 1)
+            deconvs[layer_name] = nn.ConvTranspose2d(channels[i],
+                                                     channels[i + 1], 2, 2)
 
         self.encoder = Encoder()
-        self.decoder = nn.ModuleDict(convs)
-        self.output_layer_1 = nn.Conv2d(128, 64, 1, 1)
-        self.output_layer_2 = nn.Conv2d(64, 1, 1, 1)
+        self.decoder = nn.ModuleDict(deconvs)
+        self.output_layer_1 = nn.ConvTranspose2d(256, 128, 1, 1)
+        self.output_layer_2 = nn.ConvTranspose2d(128, 64, 1, 1)
+        self.output_layer_3 = nn.ConvTranspose2d(64, 16, 1, 1)
+        self.output_layer_4 = nn.ConvTranspose2d(32, 1, 1, 1)
 
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, model_name)
+        self.conv = nn.Conv2d(3, 64, 1, 1)
+        self.conv_s_ = nn.Conv2d(3, 16, 1, 1)
 
     def forward(self, s, s_):
+        start_frame = self.activation(self.conv(s))
+        next_frame = self.activation(self.conv(s_))
+        decoded_frame = self.activation(self.conv_s_(s_))
+        original = torch.cat([start_frame, next_frame], dim=1)
+
         x = self.encoder(s, s_)
         for i in self.decoder:
-            x = self.upsample(x)
             x = self.activation(self.decoder[i](x))
 
+        x = torch.cat([x, original], dim=1)
+
         x = self.activation(self.output_layer_1(x))
-        x = self.output_layer_2(x)
+        x = self.activation(self.output_layer_2(x))
+        x = self.activation(self.output_layer_3(x))
+        x = torch.cat([x, decoded_frame], dim=1)
+        x = self.output_layer_4(x)
 
         return x
 
@@ -52,8 +59,8 @@ class DepthNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-if __name__ == '__main__':
-    model = DepthNet()
-    x = torch.randn(1, 3, 832, 256)
-    out = model(x, x)
-    print(out.size())
+# if __name__ == '__main__':
+#     model = DepthNet()
+#     x = torch.randn(1, 3, 256, 832)
+#     out = model(x, x)
+# print(out.size())

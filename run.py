@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=2,
+                        default=3,
                         help='Batch size of input')
     parser.add_argument('--test',
                         type=bool,
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     BATCH_SIZE = args.batch
     PIN_MEM = True
     NUM_WORKERS = 4
-    EPOCHS = 20
+    EPOCHS = 10
 
     torch.backends.cudnn.benchmark = True
 
@@ -63,20 +63,13 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
     ])
 
-    depth_model = DepthNet()
+    depth_model = DepthNet(model_name='depthnet152.pt')
     pose_model = PoseNet(n_layers=4)
     print('=> Setting adam solver')
-    optim_params = [{
-        'params': depth_model.parameters(),
-        'lr': 1e-4
-    }, {
-        'params': pose_model.parameters(),
-        'lr': 1e-4
-    }]
-    optimizer = torch.optim.Adam(optim_params)
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
+    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.SmoothL1Loss()
+    loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
     # Dataset
@@ -92,12 +85,10 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-if args.test:
-    display_depth(model, preprocess, device, args.video, args.img_height,
-                  args.img_width)
+    if args.test:
+        display_depth(model, preprocess, device, args.video, args.img_height,
+                      args.img_width)
 
-else:
-    train_depth(depth_model, train_loader, val_loader, depth_optim, loss_fn,
-                device, EPOCHS)
-    # train(pose_model, depth_model, train_loader, val_loader, optimizer,
-    #       loss_fn, device, EPOCHS)
+    else:
+        train_depth(depth_model, train_loader, val_loader, depth_optim,
+                    loss_fn, device, EPOCHS)
