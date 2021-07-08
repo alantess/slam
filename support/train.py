@@ -5,6 +5,7 @@ from torch.cuda.amp import autocast, GradScaler
 from .compute import *
 
 
+# Depth
 def train_depth(model,
                 train_loader,
                 val_loader,
@@ -75,8 +76,8 @@ def train_depth(model,
         )
 
 
-def train_slom(pose_model,
-               depth_model,
+# Pose
+def train_pose(model,
                train_loader,
                val_loader,
                optimizer,
@@ -98,14 +99,13 @@ def train_slom(pose_model,
     """
     scaler = GradScaler()
     best_score = np.inf
-    pose_model = pose_model.to(device)
-    depth_model = depth_model.to(device)
     w1, w2, w3 = 0.2, 0.1, 0.1,
 
     if load_model:
-        pose_model.load()
-        depth_model.load()
+        model.load()
         print('MODEL LOADED.')
+
+    model.to(device)
 
     print("---- Starting ----")
     for epoch in range(epochs):
@@ -113,27 +113,18 @@ def train_slom(pose_model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (img, tgt, depth, Rt, intrinsic, _) in enumerate(loop):
+        for i, (img, tgt, depth, Rt, _, _) in enumerate(loop):
             img = img.to(device, dtype=torch.float32)
             tgt = tgt.to(device, dtype=torch.float32)
-            intrinsic = intrinsic.to(device, dtype=torch.float16)
-            depth = depth.to(device)
             Rt = Rt.to(device, dtype=torch.float32)
 
-            for p in pose_model.parameters():
-                p.grad = None
-
-            for p in depth_model.parameters():
+            for p in model.parameters():
                 p.grad = None
 
             with autocast():
-                pose = pose_model(img, tgt)
-                pred_depth = depth_model(img, tgt)
+                pose = model(img, tgt)
 
-                depth_loss1 = loss_fn(pred_depth, depth)
-                Rt_loss1 = compute_ate(pose, Rt)
-                Rt_loss2 = compute_translation(pose, Rt)
-                loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
+                loss = loss_fn(pose, Rt)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
 
@@ -145,37 +136,24 @@ def train_slom(pose_model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (img, tgt, depth, Rt, intrinsic, _) in enumerate(val_loop):
+            for j, (img, tgt, depth, Rt, _, _) in enumerate(val_loop):
                 img = img.to(device, dtype=torch.float32)
                 tgt = tgt.to(device, dtype=torch.float32)
-                intrinsic = intrinsic.to(device, dtype=torch.float16)
-                depth = depth.to(device)
                 Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = pose_model(img, tgt)
-                    pred_depth = depth_model(img, tgt)
+                    pose = model(img, tgt)
+                    loss = loss_fn(pose, Rt)
 
-                    depth_loss1 = loss_fn(pred_depth, depth)
-                    Rt_loss1 = compute_ate(pose, Rt)
-                    Rt_loss2 = compute_translation(pose, Rt)
-                    v_loss = w1 * depth_loss1 + w2 * Rt_loss1 + w3 * Rt_loss2
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 
         # Save the model depending on performance
         if val_loss < best_score:
             best_score = val_loss
-            pose_model.save()
-            depth_model.save()
+            model.save()
             # Save epoch, optimizer, and loss
-            torch.save(
-                {
-                    'epoch': epoch,
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': loss,
-                }, "model_checkpoints/gen_data")
-            print("MODEL SAVED.")
+            print("\nMODEL SAVED.")
 
         print(
             f"Epoch #{epoch} Loss:\n(Training): {total_loss:.5f} \t (Validation): {val_loss:.5f}  "
