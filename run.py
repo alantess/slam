@@ -6,6 +6,7 @@ from support.train import *
 from vision.visuals import *
 from dataset.data import *
 from vision.depth import *
+from vision.vision import *
 from networks.posenet import PoseNet
 from networks.depthnet import DepthNet
 
@@ -65,30 +66,34 @@ if __name__ == '__main__':
 
     depth_model = DepthNet(model_name='depthnet152.pt')
     pose_model = PoseNet(n_layers=4)
-    print('=> Setting adam solver')
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
-    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.MSELoss()
-    print('=> Gatheing Datset')
+    visualize_depth(depth_model, args.video, preprocess, device,
+                    args.img_height, args.img_width)
+
+    # print('=> Setting adam solver')
+    # depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
+    # pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-4)
+
+    # loss_fn = torch.nn.MSELoss()
+    # print('=> Gatheing Datset')
 
     # Dataset
-    trainset = KittiSet(args.kitti_dir, preprocess)
-    valset = KittiSet(args.kitti_dir, preprocess, False)
+    # trainset = KittiSet(args.kitti_dir, preprocess)
+    # valset = KittiSet(args.kitti_dir, preprocess, False)
 
-    train_loader = DataLoader(trainset,
-                              batch_size=BATCH_SIZE,
-                              num_workers=NUM_WORKERS,
-                              pin_memory=PIN_MEM)
-    val_loader = DataLoader(valset,
-                            batch_size=BATCH_SIZE,
-                            num_workers=NUM_WORKERS,
-                            pin_memory=PIN_MEM)
+    # train_loader = DataLoader(trainset,
+    #                           batch_size=BATCH_SIZE,
+    #                           num_workers=NUM_WORKERS,
+    #                           pin_memory=PIN_MEM)
+    # val_loader = DataLoader(valset,
+    #                         batch_size=BATCH_SIZE,
+    #                         num_workers=NUM_WORKERS,
+    #                         pin_memory=PIN_MEM)
 
-    if args.test:
-        display_depth(model, preprocess, device, args.video, args.img_height,
-                      args.img_width)
+# if args.test:
+#     display_depth(model, preprocess, device, args.video, args.img_height,
+#                   args.img_width)
 
-    else:
-        train_depth(depth_model, train_loader, val_loader, depth_optim,
-                    loss_fn, device, EPOCHS)
+# else:
+#     train_depth(depth_model, train_loader, val_loader, depth_optim,
+#                 loss_fn, device, EPOCHS)

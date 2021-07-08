@@ -67,16 +67,3 @@ def display_depth(model,
         result.release()
         print("Video saved. \n Check 'etc' folder ")
     cv.destroyAllWindows()
-
-
-def show_dataloader(loader):
-    img, depth = next(iter(loader))
-    print(depth.size())
-    print(torch.unique(depth[0]))
-    for i, (_, depth) in enumerate(loader):
-
-        depth = depth[0]
-        depth = depth.permute(1, 2, 0).numpy()
-        cv.imshow('frame', depth)
-        if cv.waitKey(1) == ord('q'):
-            break
