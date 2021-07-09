@@ -5,8 +5,6 @@ import torch
 import cv2 as cv
 
 pixel_coords = None
-loss_fn = torch.nn.MSELoss()
-smooth_loss = torch.nn.SmoothL1Loss()
 
 
 def compute_pose_loss(pred_pose, gt_pose):
@@ -23,11 +21,10 @@ def compute_pose_loss(pred_pose, gt_pose):
     gt_rot = gt_pose[:, :3, :3]
     gt_translation = gt_pose[:, :, -1:]
 
-    rot_err = torch.linalg.norm(gt_rot - pred_rot, axis=1)
-    translation_err = torch.linalg.norm(gt_translation - pred_translation,
-                                        axis=1)
+    rot_err = torch.linalg.norm(torch.sqrt((gt_rot - pred_rot)**2))
+    translation_err = torch.linalg.norm(gt_translation - pred_translation)
 
-    return rot_err.mean(), translation_err.mean()
+    return rot_err, translation_err
 
 
 @torch.no_grad()

@@ -65,7 +65,7 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = PoseNet(n_layers=4)
+    pose_model = PoseNet(n_layers=5, model_name="posenetv2.pt")
 
     # visualize_depth(depth_model, args.video, preprocess, device,
     #                 args.img_height, args.img_width)
