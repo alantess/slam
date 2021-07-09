@@ -27,7 +27,7 @@ if __name__ == '__main__':
                         help="Image width")
     parser.add_argument('--batch',
                         type=int,
-                        default=3,
+                        default=2,
                         help='Batch size of input')
     parser.add_argument('--test',
                         type=bool,
@@ -77,7 +77,8 @@ if __name__ == '__main__':
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
-    Dataset
+    torch.cuda.empty_cache()
+    #Dataset
     trainset = KittiSet(args.kitti_dir, preprocess)
     valset = KittiSet(args.kitti_dir, preprocess, False)
 
@@ -90,12 +91,12 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-if args.test:
-    display_depth(model, preprocess, device, args.video, args.img_height,
-                  args.img_width)
+    if args.test:
+        display_depth(model, preprocess, device, args.video, args.img_height,
+                      args.img_width)
 
-else:
-    train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
-               device, EPOCHS)
-    # train_depth(depth_model, train_loader, val_loader, depth_optim,
-    # loss_fn, device, EPOCHS)
+    else:
+        train_pose(pose_model, depth_model, train_loader, val_loader,
+                   pose_optim, loss_fn, device, EPOCHS)
+        # train_depth(depth_model, train_loader, val_loader, depth_optim,
+        # loss_fn, device, EPOCHS)

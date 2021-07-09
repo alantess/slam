@@ -47,7 +47,7 @@ class KittiSet(Dataset):
                     "frame": imgs[i],
                     "next_frame": imgs[i + 1],
                     "depth": depth[i + 1],
-                    "poses": poses[i + 1].reshape((3, 4)),
+                    "poses": poses[i + 1].reshape(3, 4),
                     "intrinsic": k,
                 }
                 seq_set.append(sample)

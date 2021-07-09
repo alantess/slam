@@ -23,7 +23,7 @@ def train_depth(model,
         model.load()
         print('MODEL LOADED.')
 
-    print("---- Starting ----")
+    print("---- Training Depth ----")
     for epoch in range(epochs):
         loop = tqdm(train_loader)
         total_loss = 0
@@ -78,6 +78,7 @@ def train_depth(model,
 
 # Pose
 def train_pose(model,
+               depth_model,
                train_loader,
                val_loader,
                optimizer,
@@ -99,21 +100,23 @@ def train_pose(model,
     """
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2, w3 = 0.2, 0.1, 0.1,
+    w1, w2 = 0.2, 0.1
 
+    depth_model.load()
+    depth_model.to(device)
     if load_model:
         model.load()
         print('MODEL LOADED.')
 
     model.to(device)
 
-    print("---- Starting ----")
+    print("---- Training Pose ----")
     for epoch in range(epochs):
         loop = tqdm(train_loader)
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (img, tgt, depth, Rt, _, _) in enumerate(loop):
+        for i, (img, tgt, _, Rt, _, _) in enumerate(loop):
             img = img.to(device, dtype=torch.float32)
             tgt = tgt.to(device, dtype=torch.float32)
             Rt = Rt.to(device, dtype=torch.float32)
@@ -122,9 +125,14 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                pose = model(img, tgt)
+                with torch.no_grad():
+                    depth = depth_model(img, tgt)
 
-                loss = loss_fn(pose, Rt)
+                pose = model(img, tgt, depth)
+
+                err1, err2 = compute_pose_loss(pose, Rt)
+                loss = (err1 * w1) + (err2 * w2)
+                loss = loss.mean()
             scaler.scale(loss).backward()
             scaler.step(optimizer)
 
@@ -136,14 +144,18 @@ def train_pose(model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (img, tgt, depth, Rt, _, _) in enumerate(val_loop):
+            for j, (img, tgt, _, Rt, _, _) in enumerate(val_loop):
                 img = img.to(device, dtype=torch.float32)
                 tgt = tgt.to(device, dtype=torch.float32)
                 Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = model(img, tgt)
-                    loss = loss_fn(pose, Rt)
+                    with torch.no_grad():
+                        depth = depth_model(img, tgt)
+                    pose = model(img, tgt, depth)
+                    v_err1, v_err2 = compute_pose_loss(pose, Rt)
+                    v_loss = (v_err1 * w1) + (v_err2 * w2)
+                    v_loss = v_loss.mean()
 
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())

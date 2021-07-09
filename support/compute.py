@@ -6,22 +6,21 @@ import cv2 as cv
 
 pixel_coords = None
 
-loss = torch.nn.MSELoss()
 
-
-# Absolute Trajectory Error (Localization Error)
-def compute_ate(pred_pose, gt_pose):
-    # Reference https://arxiv.org/pdf/2105.14994v1.pdf
-    # Loss between the rotation matrix
+def compute_pose_loss(pred_pose, gt_pose):
+    """
+    Inputs:
+    Predicted Pose [B,3,4]
+    Ground Truth [B,3,4]
+    Returns:
+    Rotational [B,1] and Translation Error [B,1]
+    """
     assert len(pred_pose) == len(gt_pose)
-    return torch.sqrt(
-        torch.mean(torch.sum((pred_pose[:, :3] - gt_pose[:, :3])**2, axis=1)))
-
-
-# Translation Distance
-def compute_translation(pred_pose, gt_pose):
-    assert len(pred_pose) == len(gt_pose)
-    return loss(gt_pose[:, :, -1:], pred_pose[:, :, -1:])
+    rot_vec_err = torch.linalg.norm(gt_pose[:, :3] - pred_pose[:, :3], axis=1)
+    translation_err = torch.linalg.norm(gt_pose[:, :, -1:] -
+                                        pred_pose[:, :, -1:],
+                                        axis=1)
+    return rot_vec_err, translation_err
 
 
 @torch.no_grad()
