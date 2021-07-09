@@ -23,7 +23,8 @@ class PoseNet(nn.Module):
         self.gru = nn.GRU(700, 256, n_layers, batch_first=True)
         # Set up FC
         self.input_fc = nn.Linear(256, 128)
-        self.outout_fc = nn.Linear(128, 12)
+        self.translation_fc = nn.Linear(128, 3)
+        self.rotation_fc = nn.Linear(128, 3)
         neurons = [128, 128, 128]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
@@ -46,7 +47,6 @@ class PoseNet(nn.Module):
         self.decoder = nn.ModuleDict(deconvs)
         self.fcl = nn.ModuleDict(mlps)
         self.convs = nn.ModuleDict(convs)
-        self.out = nn.Linear(32, 12)
         self.encoder = Encoder()
 
     def forward(self, s, s_, depth):
@@ -67,10 +67,51 @@ class PoseNet(nn.Module):
         for i in self.fcl:
             x = self.dropout(self.actiivation(self.fcl[i](x)))
 
-        x = self.outout_fc(x)
-        x = torch.linalg.norm(x, axis=1).view(-1, 3, 4)
+        x = torch.linalg.norm(x, axis=1)
+        r = self.rotation_fc(x)
+        r = self.euler2mat(r)
 
-        return x
+        t = self.translation_fc(x).unsqueeze(2)
+        pose = torch.cat([r, t], dim=2)
+
+        return pose
+
+    def euler2mat(self, angle):
+        """
+        Args: [B,3] in radians
+        Returns: [B,3,3]
+        """
+        # Reference: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
+
+        B = angle.size(0)
+        x, y, z = angle[:, 0], angle[:, 1], angle[:, 2]
+
+        cosz = torch.cos(z)
+        sinz = torch.sin(z)
+
+        zeros = z.detach() * 0
+        ones = zeros.detach() + 1
+        zmat = torch.stack(
+            [cosz, -sinz, zeros, sinz, cosz, zeros, zeros, zeros, ones],
+            dim=1).reshape(B, 3, 3)
+
+        cosy = torch.cos(y)
+        siny = torch.sin(y)
+
+        ymat = torch.stack(
+            [cosy, zeros, siny, zeros, ones, zeros, -siny, zeros, cosy],
+            dim=1).reshape(B, 3, 3)
+
+        cosx = torch.cos(x)
+        sinx = torch.sin(x)
+
+        xmat = torch.stack(
+            [ones, zeros, zeros, zeros, cosx, -sinx, zeros, sinx, cosx],
+            dim=1).reshape(B, 3, 3)
+
+        rotMat = xmat @ ymat @ zmat
+
+        return rotMat
 
     def save(self):
         if not os.path.exists(self.chkpt_dir):
@@ -82,10 +123,17 @@ class PoseNet(nn.Module):
 
 
 # if __name__ == '__main__':
+#     r = torch.ones(1, 3, 3)
+#     t = torch.randn(1, 3, 1)
+#     z = torch.cat([r, t], dim=2)
 
-#     ex = torch.randn(1, 3, 256, 832)
-#     depth = torch.randn(1, 1, 256, 832)
+#     print(z)
+#     print("\n")
+#     print(z[:, :, -1:])
 
-#     model = PoseNet()
-#     y = model(ex, ex, depth)
-#     print(y.size())
+# ex = torch.randn(1, 3, 256, 832)
+# depth = torch.randn(1, 1, 256, 832)
+
+# model = PoseNet()
+# y = model(ex, ex, depth)
+# print(y.size())

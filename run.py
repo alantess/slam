@@ -91,6 +91,14 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
+    # pose_model.load()
+    # depth_model.load()
+    # s, s_, depth, Rt, _, _ = next(iter(val_loader))
+    # dpth = depth_model(s, s_)
+    # pose = pose_model(s, s_, dpth)
+    # print(Rt[0])
+    # print(pose[0])
+
     if args.test:
         display_depth(model, preprocess, device, args.video, args.img_height,
                       args.img_width)
@@ -99,4 +107,4 @@ if __name__ == '__main__':
         train_pose(pose_model, depth_model, train_loader, val_loader,
                    pose_optim, loss_fn, device, EPOCHS)
         # train_depth(depth_model, train_loader, val_loader, depth_optim,
-        # loss_fn, device, EPOCHS)
+# loss_fn, device, EPOCHS)
