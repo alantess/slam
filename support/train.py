@@ -100,7 +100,7 @@ def train_pose(model,
     """
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2 = 0.2, 0.1
+    w1, w2 = 0.1, 0.1
 
     depth_model.load()
     depth_model.to(device)
