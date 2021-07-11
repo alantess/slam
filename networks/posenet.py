@@ -60,6 +60,31 @@ class PoseNet(nn.Module):
 
         return pose
 
+    def get_pixels(self, depth, intrinsics_inv):
+        b, h, w = depth.size()
+        pixel_coords = self.set_id_grid(depth)
+        current_pixel_coords = pixel_coords[:, :, :h, :w].expand(
+            b, 3, h, w).reshape(b, 3, -1)  # [B, 3, H*W]
+        cam_coords = (intrinsics_inv @ current_pixel_coords).reshape(
+            b, 3, h, w)
+
+        return cam_coords * depth.unsqueeze(1)
+
+    def set_id_grid(self, depth):
+        b, h, w = depth.size()
+        i_range = torch.arange(0,
+                               h).view(1, h,
+                                       1).expand(1, h,
+                                                 w).type_as(depth)  # [1, H, W]
+        j_range = torch.arange(0,
+                               w).view(1, 1,
+                                       w).expand(1, h,
+                                                 w).type_as(depth)  # [1, H, W]
+        ones = torch.ones(1, h, w).type_as(depth)
+
+        pixel_coords = torch.stack((j_range, i_range, ones), dim=1)
+        return pixel_coords
+
     def save(self):
         if not os.path.exists(self.chkpt_dir):
             os.mkdir(self.chkpt_dir)

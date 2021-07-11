@@ -3,7 +3,6 @@ import torch
 import cv2 as cv
 import glob
 import numpy as np
-import random
 import torchvision
 from torch.utils.data import Dataset
 
@@ -36,6 +35,9 @@ class KittiSet(Dataset):
             k = np.genfromtxt(cam_file).reshape((3, 3))
             poses = np.genfromtxt(poses_file)
 
+            if self.make_sequential:
+                print('make')
+
             assert len(imgs) == len(depth)
             n = len(poses)
             if self.frame_skip:
@@ -59,6 +61,7 @@ class KittiSet(Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
+
         s = cv.imread(sample["frame"])
         s_ = cv.imread(sample["next_frame"])
         depth = cv.imread(sample["depth"])
@@ -82,5 +85,8 @@ class KittiSet(Dataset):
 
 
 # if __name__ == '__main__':
-# path = "/media/alan/seagate/datasets/kitti/cpp/"
-# dataset = KittiSet(path)
+#     from torch.utils.data import DataLoader
+#     path = "/media/alan/seagate/datasets/kitti/cpp/"
+#     dataset = KittiSet(path)
+#     loader = DataLoader(dataset, 1)
+#     s, s_, depth, rt, k, inv = next(iter(loader))
