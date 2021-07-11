@@ -14,6 +14,8 @@ def train_depth(model,
                 device,
                 epochs,
                 load_model=False):
+    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params}")
 
     scaler = GradScaler()
     best_score = np.inf
@@ -98,9 +100,11 @@ def train_pose(model,
     :param load_model: Loads saved model 
     :return: None 
     """
+    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e7:.2f}M")
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2, w3 = 0.2, 0.2, 0.5
+    w1, w2, w3 = 1, 1, 0.5
 
     depth_model.load()
     depth_model.to(device)
@@ -125,14 +129,11 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                with torch.no_grad():
-                    depth = depth_model(img, tgt)
+                pose = model(img, tgt)
 
-                pose = model(img, tgt, depth)
-
-                # mse = loss_fn(pose, Rt)
-                err1, err2 = compute_pose_loss(pose, Rt)
-                loss = (err1 * w1) + (err2 * w2)
+                loss = loss_fn(pose, Rt)
+                # err1, err2 = compute_pose_loss(pose, Rt)
+                # loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
 
@@ -150,12 +151,10 @@ def train_pose(model,
                 Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
-                    with torch.no_grad():
-                        depth = depth_model(img, tgt)
-                    pose = model(img, tgt, depth)
-                    # mse = loss_fn(pose, Rt)
-                    v_err1, v_err2 = compute_pose_loss(pose, Rt)
-                    v_loss = (v_err1 * w1) + (v_err2 * w2)
+                    pose = model(img, tgt)
+                    v_loss = loss_fn(pose, Rt)
+                    # v_err1, v_err2 = compute_pose_loss(pose, Rt)
+                    # v_loss = (v_err1 * w1) + (v_err2 * w2)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

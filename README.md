@@ -5,14 +5,19 @@
 
 Execute
 ---
-### Training
-```sh
-   python run.py
+```bash
+   python run.py              # Trains the models
+   python run.py --test True  # Displays the Model Perfomance
 ```
-### Inferencing
 
-```sh
-   python run.py --test True
+<p>The run.py accepts the following:</p>
+```bash
+optional arguments:
+  --img-height            Sets the image height
+  --img-width             Sets the image width
+  --batch                 Sets the batch size 
+  --test                  Displays Model Performance 
+  --video                 Directory or Link (mp4) to driving footage              
 ```
 
 Directory 

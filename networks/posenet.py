@@ -1,4 +1,5 @@
 import os
+from gtrxl_torch.gtrxl_torch import GTrXL
 import torch
 from .encoder import Encoder
 from torch import nn
@@ -7,7 +8,8 @@ from torch import nn
 class PoseNet(nn.Module):
     def __init__(
         self,
-        n_layers=2,
+        n_layers=6,
+        nheads=4,
         model_name='posenet.pt',
         chkpt='model_checkpoints',
     ):
@@ -19,55 +21,49 @@ class PoseNet(nn.Module):
         deconvs = {}
         mlps = {}
         convs = {}
-        # Set up RNN
-        self.gru = nn.GRU(700, 256, n_layers, batch_first=True)
         # Set up FC
-        self.input_fc = nn.Linear(256, 128)
-        self.translation_fc = nn.Linear(128, 3)
-        self.rotation_fc = nn.Linear(128, 3)
-        neurons = [128, 128, 128]
+        self.input_fc = nn.Linear(4180, 512)
+        self.translation_fc = nn.Linear(64, 3)
+        self.rotation_fc = nn.Linear(64, 3)
+        neurons = [512, 64]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
-        # Set up Deconvs
-        layers = [4096, 2048, 1024, 512, 128, 8]
-        for i in range(len(layers) - 1):
-            layer_name = "layer" + str(i)
-            deconvs[layer_name] = nn.ConvTranspose2d(layers[i], layers[i + 1],
-                                                     2, 2)
         self.depth_conv = nn.Conv2d(1, 8, 1, 1)
         # Merged Feats Convs
         self.pool = nn.MaxPool2d(2)
-        feat_convs = [16, 32, 64, 128, 256]
+        feat_convs = [256, 128, 64, 1]
         for i in range(len(feat_convs) - 1):
             layer_name = "featconvs" + str(i)
-            convs[layer_name] = nn.Conv2d(feat_convs[i], feat_convs[i + 1], 3,
-                                          1)
+            convs[layer_name] = nn.ConvTranspose2d(feat_convs[i],
+                                                   feat_convs[i + 1], 3, 1)
 
-        self.decoder = nn.ModuleDict(deconvs)
+        self.unflatten = nn.Unflatten(2, (8, 26))
+        self.pixel_shuffle = nn.PixelShuffle(4)
         self.fcl = nn.ModuleDict(mlps)
         self.convs = nn.ModuleDict(convs)
+        self.transformer = GTrXL(208,
+                                 nheads,
+                                 n_layers,
+                                 batch_first=True,
+                                 activation='gelu')  # Transformer
         self.encoder = Encoder()
 
-    def forward(self, s, s_, depth):
+    def forward(self, s, s_):
         x = self.encoder(s, s_)
-
-        for i in self.decoder:
-            x = self.actiivation(self.decoder[i](x))
-
-        feats = self.actiivation(self.depth_conv(depth))
-        x = torch.cat([x, feats], dim=1)
-        for i in self.convs:
-            x = self.actiivation(self.pool(self.convs[i](x)))
-
         x = x.flatten(2)
+        x = self.transformer(x)
+        x = self.unflatten(x)
+        x = self.pixel_shuffle(x)
+        for i in self.convs:
+            x = self.actiivation(self.convs[i](x))
+        x = x.flatten(1)
 
-        x, _ = self.gru(x)
         x = self.actiivation(self.input_fc(x))
+
         for i in self.fcl:
             x = self.dropout(self.actiivation(self.fcl[i](x)))
 
-        x = torch.linalg.norm(x, axis=1)
         r = self.rotation_fc(x)
         r = self.euler2mat(r)
 
@@ -124,17 +120,9 @@ class PoseNet(nn.Module):
 
 
 # if __name__ == '__main__':
-#     r = torch.ones(1, 3, 3)
-#     t = torch.randn(1, 3, 1)
-#     z = torch.cat([r, t], dim=2)
 
-#     print(z)
-#     print("\n")
-#     print(z[:, :, -1:])
+#     ex = torch.randn(1, 3, 256, 832)
 
-# ex = torch.randn(1, 3, 256, 832)
-# depth = torch.randn(1, 1, 256, 832)
-
-# model = PoseNet()
-# y = model(ex, ex, depth)
-# print(y.size())
+#     model = PoseNet()
+#     y = model(ex, ex)
+#     print(y.size())

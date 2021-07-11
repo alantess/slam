@@ -23,7 +23,8 @@ def compute_pose_loss(pred_pose, gt_pose):
     gt_translation = gt_pose[:, :, -1:]
 
     rot_err = torch.mean(torch.sqrt((gt_rot - pred_rot)**2))
-    translation_err = torch.mean(gt_translation - pred_translation)
+    translation_err = torch.mean(
+        torch.sqrt((gt_translation - pred_translation)**2))
 
     return rot_err, translation_err
 
