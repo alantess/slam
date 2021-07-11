@@ -61,7 +61,7 @@ class PoseNet(nn.Module):
         for i in self.fcl:
             x = self.dropout(self.actiivation(self.fcl[i](x)))
 
-        r = self.rotation_fc(x)
+        r = self.actiivation(self.rotation_fc(x))
         r = self.euler2mat(r)
 
         t = self.translation_fc(x).unsqueeze(2)

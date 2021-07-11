@@ -104,7 +104,7 @@ def train_pose(model,
     print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e7:.2f}M")
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2, w3 = 1, 1, 0.5
+    w1, w2, w3 = 0.1, 0.1, 0.5
 
     depth_model.load()
     depth_model.to(device)
@@ -131,9 +131,9 @@ def train_pose(model,
             with autocast():
                 pose = model(img, tgt)
 
-                loss = loss_fn(pose, Rt)
-                # err1, err2 = compute_pose_loss(pose, Rt)
-                # loss = (err1 * w1) + (err2 * w2)
+                # loss = loss_fn(pose, Rt)
+                err1, err2 = compute_pose_loss(pose, Rt)
+                loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
 
@@ -152,9 +152,9 @@ def train_pose(model,
 
                 with autocast():
                     pose = model(img, tgt)
-                    v_loss = loss_fn(pose, Rt)
-                    # v_err1, v_err2 = compute_pose_loss(pose, Rt)
-                    # v_loss = (v_err1 * w1) + (v_err2 * w2)
+                    # v_loss = loss_fn(pose, Rt)
+                    v_err1, v_err2 = compute_pose_loss(pose, Rt)
+                    v_loss = (v_err1 * w1) + (v_err2 * w2)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

@@ -11,6 +11,7 @@ Execute
 ```
 
 <p>The run.py accepts the following:</p>
+
 ```bash
 optional arguments:
   --img-height            Sets the image height
