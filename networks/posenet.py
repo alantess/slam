@@ -8,8 +8,8 @@ from torch import nn
 class PoseNet(nn.Module):
     def __init__(
         self,
-        n_layers=6,
-        nheads=4,
+        n_layers=4,
+        nheads=2,
         model_name='posenet.pt',
         chkpt='model_checkpoints',
     ):
@@ -18,25 +18,22 @@ class PoseNet(nn.Module):
         self.file = os.path.join(chkpt, model_name)
         self.actiivation = nn.SELU()
         self.dropout = nn.Dropout(0.4)
-        deconvs = {}
         mlps = {}
         convs = {}
         # Set up FC
-        self.input_fc = nn.Linear(4180, 512)
-        self.translation_fc = nn.Linear(64, 3)
-        self.rotation_fc = nn.Linear(64, 3)
-        neurons = [512, 64]
+        self.input_fc = nn.Linear(4180, 256)
+        self.translation_fc = nn.Linear(32, 3)
+        self.rotation_fc = nn.Linear(32, 3)
+        neurons = [256, 128, 32]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
-        self.depth_conv = nn.Conv2d(1, 8, 1, 1)
-        # Merged Feats Convs
-        self.pool = nn.MaxPool2d(2)
-        feat_convs = [256, 128, 64, 1]
-        for i in range(len(feat_convs) - 1):
-            layer_name = "featconvs" + str(i)
-            convs[layer_name] = nn.ConvTranspose2d(feat_convs[i],
-                                                   feat_convs[i + 1], 3, 1)
+
+        layers = [256, 128, 64, 1]
+        for i in range(len(layers) - 1):
+            layer_name = "layer" + str(i)
+            convs[layer_name] = nn.ConvTranspose2d(layers[i], layers[i + 1], 3,
+                                                   1)
 
         self.unflatten = nn.Unflatten(2, (8, 26))
         self.pixel_shuffle = nn.PixelShuffle(4)
