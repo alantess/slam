@@ -15,7 +15,7 @@ def train_depth(model,
                 epochs,
                 load_model=False):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params}")
+    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e6:1f}")
 
     scaler = GradScaler()
     best_score = np.inf
@@ -80,7 +80,6 @@ def train_depth(model,
 
 # Pose
 def train_pose(model,
-               depth_model,
                train_loader,
                val_loader,
                optimizer,
@@ -101,13 +100,11 @@ def train_pose(model,
     :return: None 
     """
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e7:.2f}M")
+    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e6:.1f}M")
     scaler = GradScaler()
     best_score = np.inf
     w1, w2, w3 = 0.1, 0.1, 0.5
 
-    depth_model.load()
-    depth_model.to(device)
     if load_model:
         model.load()
         print('MODEL LOADED.')
@@ -130,7 +127,6 @@ def train_pose(model,
 
             with autocast():
                 pose = model(img, tgt)
-
                 # loss = loss_fn(pose, Rt)
                 err1, err2 = compute_pose_loss(pose, Rt)
                 loss = (err1 * w1) + (err2 * w2)

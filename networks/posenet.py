@@ -1,5 +1,4 @@
 import os
-from gtrxl_torch.gtrxl_torch import GTrXL
 import torch
 from .encoder import Encoder
 from torch import nn
@@ -9,7 +8,6 @@ class PoseNet(nn.Module):
     def __init__(
         self,
         n_layers=4,
-        nheads=2,
         model_name='posenet.pt',
         chkpt='model_checkpoints',
     ):
@@ -20,10 +18,11 @@ class PoseNet(nn.Module):
         self.dropout = nn.Dropout(0.4)
         mlps = {}
         convs = {}
+        self.gru = nn.GRU(2548, 512, n_layers, batch_first=True)
         # Set up FC
-        self.input_fc = nn.Linear(4180, 256)
+        self.input_fc = nn.Linear(512, 256)
         self.translation_fc = nn.Linear(32, 3)
-        self.rotation_fc = nn.Linear(32, 3)
+        self.rotation_fc = nn.Linear(32, 9)
         neurons = [256, 128, 32]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
@@ -32,80 +31,34 @@ class PoseNet(nn.Module):
         layers = [256, 128, 64, 1]
         for i in range(len(layers) - 1):
             layer_name = "layer" + str(i)
-            convs[layer_name] = nn.ConvTranspose2d(layers[i], layers[i + 1], 3,
-                                                   1)
+            convs[layer_name] = nn.Conv2d(layers[i], layers[i + 1], 3, 1)
 
-        self.unflatten = nn.Unflatten(2, (8, 26))
         self.pixel_shuffle = nn.PixelShuffle(4)
         self.fcl = nn.ModuleDict(mlps)
         self.convs = nn.ModuleDict(convs)
-        self.transformer = GTrXL(208,
-                                 nheads,
-                                 n_layers,
-                                 batch_first=True,
-                                 activation='gelu')  # Transformer
         self.encoder = Encoder()
 
     def forward(self, s, s_):
         x = self.encoder(s, s_)
-        x = x.flatten(2)
-        x = self.transformer(x)
-        x = self.unflatten(x)
         x = self.pixel_shuffle(x)
         for i in self.convs:
             x = self.actiivation(self.convs[i](x))
-        x = x.flatten(1)
+
+        x = x.flatten(2)
+        x, _ = self.gru(x)
+        x = x.mean(1)
 
         x = self.actiivation(self.input_fc(x))
 
         for i in self.fcl:
             x = self.dropout(self.actiivation(self.fcl[i](x)))
 
-        r = self.actiivation(self.rotation_fc(x))
-        r = self.euler2mat(r)
+        r = self.rotation_fc(x).view(-1, 3, 3)
 
         t = self.translation_fc(x).unsqueeze(2)
         pose = torch.cat([r, t], dim=2)  # B x 3 x 4
 
         return pose
-
-    def euler2mat(self, angle):
-        """
-        Args: [B,3] in radians
-        Returns: [B,3,3]
-
-        Reference: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
-        """
-
-        B = angle.size(0)
-        x, y, z = angle[:, 0], angle[:, 1], angle[:, 2]
-
-        cosz = torch.cos(z)
-        sinz = torch.sin(z)
-
-        zeros = z.detach() * 0
-        ones = zeros.detach() + 1
-        zmat = torch.stack(
-            [cosz, -sinz, zeros, sinz, cosz, zeros, zeros, zeros, ones],
-            dim=1).reshape(B, 3, 3)
-
-        cosy = torch.cos(y)
-        siny = torch.sin(y)
-
-        ymat = torch.stack(
-            [cosy, zeros, siny, zeros, ones, zeros, -siny, zeros, cosy],
-            dim=1).reshape(B, 3, 3)
-
-        cosx = torch.cos(x)
-        sinx = torch.sin(x)
-
-        xmat = torch.stack(
-            [ones, zeros, zeros, zeros, cosx, -sinx, zeros, sinx, cosx],
-            dim=1).reshape(B, 3, 3)
-
-        rotMat = xmat @ ymat @ zmat
-
-        return rotMat
 
     def save(self):
         if not os.path.exists(self.chkpt_dir):

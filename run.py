@@ -45,6 +45,8 @@ if __name__ == '__main__':
     device = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+    SEED = 99
+    torch.manual_seed(SEED)
     BATCH_SIZE = args.batch
     PIN_MEM = True
     NUM_WORKERS = 4
@@ -85,19 +87,18 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
-                              pin_memory=PIN_MEM)
+                              pin_memory=PIN_MEM,
+                              shuffle=True)
     val_loader = DataLoader(valset,
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
     # pose_model.load()
-    # depth_model.load()
 
     # s, s_, depth, Rt, _, _ = next(iter(val_loader))
     # with torch.no_grad():
-    #     dpth = depth_model(s, s_)
-    #     pose = pose_model(s, s_, dpth)
+    #     pose = pose_model(s, s_)
     # print(Rt[0])
     # print(pose[0])
 
@@ -106,7 +107,7 @@ if __name__ == '__main__':
                       args.img_width)
 
     else:
-        train_pose(pose_model, depth_model, train_loader, val_loader,
-                   pose_optim, loss_fn, device, EPOCHS)
-        # # train_depth(depth_model, train_loader, val_loader, depth_optim,
+        train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
+                   device, EPOCHS)
+# train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)

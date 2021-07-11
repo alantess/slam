@@ -72,7 +72,7 @@ class KittiSet(Dataset):
             s_ = self.transforms(s_)
             depth = self.transforms(depth)
             depth = grayscale(depth)
-            Rt = (Rt - self.mean) / self.std
+            # Rt = (Rt - self.mean) / self.std
             # k = (k - self.mean) / self.std
             Rt = torch.from_numpy(Rt)
             k = torch.from_numpy(k)
