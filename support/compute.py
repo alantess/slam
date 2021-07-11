@@ -9,6 +9,7 @@ pixel_coords = None
 
 def compute_pose_loss(pred_pose, gt_pose):
     """
+    Compute the euclidean loss in euclidean space
     Inputs:
     Predicted Pose [B,3,4]
     Ground Truth [B,3,4]
@@ -21,8 +22,8 @@ def compute_pose_loss(pred_pose, gt_pose):
     gt_rot = gt_pose[:, :3, :3]
     gt_translation = gt_pose[:, :, -1:]
 
-    rot_err = torch.linalg.norm(torch.sqrt((gt_rot - pred_rot)**2))
-    translation_err = torch.linalg.norm(gt_translation - pred_translation)
+    rot_err = torch.mean(torch.sqrt((gt_rot - pred_rot)**2))
+    translation_err = torch.mean(gt_translation - pred_translation)
 
     return rot_err, translation_err
 
@@ -76,3 +77,18 @@ def pose_to_mat(vec, method='euler'):
                                dim=2)  # Shapes to [B,3,4]
 
     return transformation
+
+
+def compute_2d_pix(k, pixel_coords):
+    """
+    p = kPc
+    """
+    pass
+
+
+def compute_pixel_coords(Rt, pixel_world_coords):
+    """
+    Pc =  |R t| Pw
+          |0 1|
+    """
+    pass

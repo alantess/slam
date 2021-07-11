@@ -100,7 +100,7 @@ def train_pose(model,
     """
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2 = 0.3, 0.3
+    w1, w2, w3 = 0.2, 0.2, 0.5
 
     depth_model.load()
     depth_model.to(device)
@@ -119,7 +119,7 @@ def train_pose(model,
         for i, (img, tgt, _, Rt, _, _) in enumerate(loop):
             img = img.to(device, dtype=torch.float32)
             tgt = tgt.to(device, dtype=torch.float32)
-            Rt = Rt.to(device)
+            Rt = Rt.to(device, dtype=torch.float32)
 
             for p in model.parameters():
                 p.grad = None
@@ -130,6 +130,7 @@ def train_pose(model,
 
                 pose = model(img, tgt, depth)
 
+                # mse = loss_fn(pose, Rt)
                 err1, err2 = compute_pose_loss(pose, Rt)
                 loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
@@ -146,15 +147,15 @@ def train_pose(model,
             for j, (img, tgt, _, Rt, _, _) in enumerate(val_loop):
                 img = img.to(device, dtype=torch.float32)
                 tgt = tgt.to(device, dtype=torch.float32)
-                Rt = Rt.to(device)
+                Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
                     with torch.no_grad():
                         depth = depth_model(img, tgt)
                     pose = model(img, tgt, depth)
+                    # mse = loss_fn(pose, Rt)
                     v_err1, v_err2 = compute_pose_loss(pose, Rt)
                     v_loss = (v_err1 * w1) + (v_err2 * w2)
-
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

@@ -65,14 +65,14 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = PoseNet(n_layers=5, model_name="posenetv2.pt")
+    pose_model = PoseNet(n_layers=4, model_name="posenetv2.pt")
 
     # visualize_depth(depth_model, args.video, preprocess, device,
     #                 args.img_height, args.img_width)
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
-    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-4)
+    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=5e-5)
 
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
@@ -93,9 +93,11 @@ if __name__ == '__main__':
 
     # pose_model.load()
     # depth_model.load()
+
     # s, s_, depth, Rt, _, _ = next(iter(val_loader))
-    # dpth = depth_model(s, s_)
-    # pose = pose_model(s, s_, dpth)
+    # with torch.no_grad():
+    #     dpth = depth_model(s, s_)
+    #     pose = pose_model(s, s_, dpth)
     # print(Rt[0])
     # print(pose[0])
 
@@ -106,5 +108,5 @@ if __name__ == '__main__':
     else:
         train_pose(pose_model, depth_model, train_loader, val_loader,
                    pose_optim, loss_fn, device, EPOCHS)
-        # train_depth(depth_model, train_loader, val_loader, depth_optim,
+        # # train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)

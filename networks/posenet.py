@@ -72,7 +72,7 @@ class PoseNet(nn.Module):
         r = self.euler2mat(r)
 
         t = self.translation_fc(x).unsqueeze(2)
-        pose = torch.cat([r, t], dim=2)
+        pose = torch.cat([r, t], dim=2)  # B x 3 x 4
 
         return pose
 
@@ -80,8 +80,9 @@ class PoseNet(nn.Module):
         """
         Args: [B,3] in radians
         Returns: [B,3,3]
+
+        Reference: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
         """
-        # Reference: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
 
         B = angle.size(0)
         x, y, z = angle[:, 0], angle[:, 1], angle[:, 2]
