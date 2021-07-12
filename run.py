@@ -7,6 +7,7 @@ from vision.visuals import *
 from dataset.data import *
 from vision.depth import *
 from vision.vision import *
+from support.test import *
 from networks.posenet import PoseNet
 from networks.depthnet import DepthNet
 
@@ -94,18 +95,15 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    # pose_model.load()
-    # depth_model.load()
+    # if args.test:
+    # test_pose(pose_model, val_loader)
+    # test_depth(depth_model, val_loader)
 
-    # s, s_, depth, Rt, k, inv = next(iter(val_loader))
-    # print(k.size())
+    #     display_depth(model, preprocess, device, args.video, args.img_height,
+    #                   args.img_width)
 
-    if args.test:
-        display_depth(model, preprocess, device, args.video, args.img_height,
-                      args.img_width)
-
-    else:
-        train_pose(pose_model, depth_model, train_loader, val_loader,
-                   pose_optim, loss_fn, device, EPOCHS)
+#     else:
+#         train_pose(pose_model, depth_model, train_loader, val_loader,
+#                    pose_optim, loss_fn, device, EPOCHS)
 # train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)

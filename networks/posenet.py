@@ -35,7 +35,7 @@ class PoseNet(nn.Module):
         self.fcl = nn.ModuleDict(mlps)
         self.convs = nn.ModuleDict(convs)
 
-    def forward(self, depth, k, k_inv):
+    def forward(self, depth, k_inv):
         depth = depth.squeeze(1)
         x = self.get_pixels(depth, k_inv)
         for i in self.convs:
