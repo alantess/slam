@@ -35,9 +35,6 @@ class KittiSet(Dataset):
             k = np.genfromtxt(cam_file).reshape((3, 3))
             poses = np.genfromtxt(poses_file)
 
-            if self.make_sequential:
-                print('make')
-
             assert len(imgs) == len(depth)
             n = len(poses)
             if self.frame_skip:

@@ -95,19 +95,17 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     # pose_model.load()
+    # depth_model.load()
 
-    # s, s_, depth, Rt, _, _ = next(iter(val_loader))
-    # with torch.no_grad():
-    #     pose = pose_model(s, s_)
-    # print(Rt[0])
-    # print(pose[0])
+    # s, s_, depth, Rt, k, inv = next(iter(val_loader))
+    # print(k.size())
 
     if args.test:
         display_depth(model, preprocess, device, args.video, args.img_height,
                       args.img_width)
 
     else:
-        train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
-                   device, EPOCHS)
+        train_pose(pose_model, depth_model, train_loader, val_loader,
+                   pose_optim, loss_fn, device, EPOCHS)
 # train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)
