@@ -95,15 +95,14 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    # if args.test:
-    # test_pose(pose_model, val_loader)
-    # test_depth(depth_model, val_loader)
+    if args.test:
+        test_pose(pose_model, val_loader)
+        test_depth(depth_model, val_loader)
+        display_depth(model, preprocess, device, args.video, args.img_height,
+                      args.img_width)
 
-    #     display_depth(model, preprocess, device, args.video, args.img_height,
-    #                   args.img_width)
-
-#     else:
-#         train_pose(pose_model, depth_model, train_loader, val_loader,
-#                    pose_optim, loss_fn, device, EPOCHS)
+    else:
+        train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
+                   device, EPOCHS)
 # train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)

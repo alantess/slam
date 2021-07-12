@@ -17,8 +17,10 @@ class PoseNet(nn.Module):
         self.actiivation = nn.GELU()
         mlps = {}
         convs = {}
+        # Gru
+        self.rnn = nn.GRU(22, 32, n_layers)
         # Set up FC
-        self.input_fc = nn.Linear(11264, 512)
+        self.input_fc = nn.Linear(512 * 32, 512)
         self.translation_fc = nn.Linear(32, 3)
         self.rotation_fc = nn.Linear(32, 9)
         neurons = [512, 128, 128, 32]
@@ -41,6 +43,8 @@ class PoseNet(nn.Module):
         for i in self.convs:
             x = self.actiivation(self.pool(self.convs[i](x)))
 
+        x = x.flatten(2)
+        x, _ = self.rnn(x)
         x = x.flatten(1)
         x = self.actiivation(self.input_fc(x))
         for i in self.fcl:
@@ -92,6 +96,6 @@ class PoseNet(nn.Module):
 #     k = torch.randn(1, 3, 3)
 
 #     model = PoseNet()
-#     y = model(ex, k, k)
+#     y = model(ex, k)
 #     print(y)
 #     print(y.size())
