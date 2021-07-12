@@ -130,9 +130,9 @@ def train_pose(model,
 
             with autocast():
                 pose = model(depth, K_inv)
-                # loss = loss_fn(pose, Rt)
-                err1, err2 = compute_pose_loss(pose, Rt)
-                loss = (err1 * w1) + (err2 * w2)
+                loss = loss_fn(pose, Rt)
+                # err1, err2 = compute_pose_loss(pose, Rt)
+                # loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
 
@@ -154,9 +154,9 @@ def train_pose(model,
 
                 with autocast():
                     pose = model(depth, K_inv)
-                    # v_loss = loss_fn(pose, Rt)
-                    v_err1, v_err2 = compute_pose_loss(pose, Rt)
-                    v_loss = (v_err1 * w1) + (v_err2 * w2)
+                    v_loss = loss_fn(pose, Rt)
+                    # v_err1, v_err2 = compute_pose_loss(pose, Rt)
+                    # v_loss = (v_err1 * w1) + (v_err2 * w2)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

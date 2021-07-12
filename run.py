@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
-    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=5e-5)
+    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-5)
 
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
@@ -95,6 +95,20 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
+    #     pose_model.load()
+    #     depth_model.load()
+    #     depth_model.eval()
+    #     pose_model.eval()
+    #     s, s_, depth, rt, k, k_inv = next(iter(val_loader))
+    #     depth = depth.to(dtype=torch.float32)
+    #     k_in = k_in.to(dtype=torch.float32)
+    #     d = depth_model(s, s_)
+    #     p = pose_model(d, k_in)
+    #     loss = loss_fn(p, rt)
+    #     print(p[0])
+    #     print(rt[0])
+    #     print(loss.item())
+
     if args.test:
         test_pose(pose_model, val_loader)
         test_depth(depth_model, val_loader)
@@ -104,5 +118,5 @@ if __name__ == '__main__':
     else:
         train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
                    device, EPOCHS)
-# train_depth(depth_model, train_loader, val_loader, depth_optim,
+# # train_depth(depth_model, train_loader, val_loader, depth_optim,
 # loss_fn, device, EPOCHS)

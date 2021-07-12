@@ -18,12 +18,13 @@ class PoseNet(nn.Module):
         mlps = {}
         convs = {}
         # Gru
-        self.rnn = nn.GRU(22, 32, n_layers)
+        self.rnn = nn.GRU(22, 256, n_layers)
+        self.rnn2 = nn.GRU(256, 256, n_layers)
         # Set up FC
-        self.input_fc = nn.Linear(512 * 32, 512)
+        self.input_fc = nn.Linear(512 * 256, 512)
         self.translation_fc = nn.Linear(32, 3)
         self.rotation_fc = nn.Linear(32, 9)
-        neurons = [512, 128, 128, 32]
+        neurons = [512, 128, 128, 128, 32]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
@@ -44,7 +45,8 @@ class PoseNet(nn.Module):
             x = self.actiivation(self.pool(self.convs[i](x)))
 
         x = x.flatten(2)
-        x, _ = self.rnn(x)
+        x, h0 = self.rnn(x)
+        x, _ = self.rnn2(x, h0)
         x = x.flatten(1)
         x = self.actiivation(self.input_fc(x))
         for i in self.fcl:
