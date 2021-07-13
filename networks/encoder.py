@@ -19,17 +19,3 @@ class Encoder(nn.Module):
         tgt = self.encoder(tgt)
         encoded = torch.cat([src, tgt], dim=1)  # Bx4096xHxW
         return encoded
-
-
-class Encoder3d(nn.Module):
-    """
-    Reference: https://arxiv.org/abs/1711.11248
-    """
-    def __init__(self):
-        super(Encoder3d, self).__init__()
-        resnet = models.video.r2plus1d_18()
-        modules = list(resnet.children())
-        self.encoder = nn.Sequential(*modules[:-1])
-
-    def forward(self, src):
-        return self.encoder(src)

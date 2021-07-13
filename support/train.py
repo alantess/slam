@@ -117,8 +117,8 @@ def train_pose(model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (frames, Rt, K) in enumerate(loop):
-            frames = frames.to(device, dtype=torch.float32)
+        for i, (depth, Rt, K) in enumerate(loop):
+            depth = depth.to(device, dtype=torch.float32)
             Rt = Rt.to(device, dtype=torch.float32)
             K = K.to(device, dtype=torch.float32)
 
@@ -126,10 +126,10 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                pose = model(frames)
-                loss = loss_fn(pose, Rt)
-                # err1, err2 = compute_pose_loss(pose, Rt)
-                # loss = (err1 * w1) + (err2 * w2)
+                pose = model(depth, K.inverse())
+                # loss = loss_fn(pose, Rt)
+                err1, err2 = compute_pose_loss(pose, Rt)
+                loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -140,16 +140,16 @@ def train_pose(model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (frames, Rt, K) in enumerate(val_loop):
-                frames = frames.to(device, dtype=torch.float32)
+            for j, (depth, Rt, K) in enumerate(val_loop):
+                depth = depth.to(device, dtype=torch.float32)
                 Rt = Rt.to(device, dtype=torch.float32)
                 K = K.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = model(frames)
-                    v_loss = loss_fn(pose, Rt)
-                    # v_err1, v_err2 = compute_pose_loss(pose, Rt)
-                    # v_loss = (v_err1 * w1) + (v_err2 * w2)
+                    pose = model(depth, K.inverse())
+                    # v_loss = loss_fn(pose, Rt)
+                    v_err1, v_err2 = compute_pose_loss(pose, Rt)
+                    v_loss = (v_err1 * w1) + (v_err2 * w2)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

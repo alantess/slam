@@ -13,10 +13,10 @@ class KittiSet(Dataset):
                  transforms=None,
                  train=True,
                  frame_skip=True,
-                 make_sequential=True,
+                 pose_dataset=True,
                  video_frames=16):
         self.transforms = transforms
-        self.make_sequential = make_sequential
+        self.pose_dataset = pose_dataset
         self.video_frames = video_frames
         self.mode = 'train.txt' if train else 'val.txt'
         self.folders = [root + f[:-1] for f in open(root + self.mode)]
@@ -43,7 +43,7 @@ class KittiSet(Dataset):
             else:
                 inc = 1
 
-            if not self.make_sequential:
+            if not self.pose_dataset:
                 for i in range(0, n - 1, inc):
                     sample = {
                         "frame": imgs[i],
@@ -54,10 +54,10 @@ class KittiSet(Dataset):
                     }
                     seq_set.append(sample)
             else:
-                for i in range(0, n - self.video_frames, self.video_frames):
+                for i in range(n):
                     sample = {
-                        'frames': imgs[i:i + self.video_frames],
-                        'poses': poses[i + self.video_frames].reshape(3, 4),
+                        'depth': depth[i],
+                        'poses': poses[i].reshape(3, 4),
                         "intrinsic": k
                     }
                     seq_set.append(sample)
@@ -70,40 +70,31 @@ class KittiSet(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
 
-        if not self.make_sequential:
+        if not self.pose_dataset:
             s = cv.imread(sample["frame"])  #HxWxC
             s_ = cv.imread(sample["next_frame"])
-            depth = cv.imread(sample["depth"])
-        else:
-            frames = np.empty((self.video_frames, 256, 832, 3))
-            for i in range(len(frames)):
-                frames[i] = cv.imread(sample["frames"][i])
 
+        depth = cv.imread(sample["depth"])
         Rt = sample["poses"]
         k = sample["intrinsic"]
         k_inv = np.linalg.inv(k)
 
         if self.transforms:
-            if not self.make_sequential:
-                grayscale = torchvision.transforms.Grayscale()
+            if not self.pose_dataset:
                 s = self.transforms(s)
                 s_ = self.transforms(s_)
-                depth = self.transforms(depth)
-                depth = grayscale(depth)
-            else:
-                frame_tensor = torch.empty((self.video_frames, 3, 256, 832))
-                for i in range(len(frame_tensor)):
-                    frame_tensor[i] = self.transforms(frames[i])
 
-                frames = frame_tensor.permute(1, 0, 2, 3)
+            grayscale = torchvision.transforms.Grayscale()
+            depth = self.transforms(depth)
+            depth = grayscale(depth)
             Rt = torch.from_numpy(Rt)
             k = torch.from_numpy(k)
             k_inv = torch.from_numpy(k_inv)
 
-        if not self.make_sequential:
+        if not self.pose_dataset:
             return s, s_, depth, Rt, k, k_inv
         else:
-            return frames, Rt, k
+            return depth, Rt, k
 
 
 # if __name__ == '__main__':

@@ -8,7 +8,7 @@ from dataset.data import *
 from vision.depth import *
 from vision.vision import *
 from support.test import *
-from networks.posenet import PoseNet3D
+from networks.posenet import *
 from networks.depthnet import DepthNet
 
 if __name__ == '__main__':
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = PoseNet3D()
+    pose_model = PoseNet()
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
@@ -89,11 +89,11 @@ if __name__ == '__main__':
     print('=> Gatheing Datset')
 
     if args.mode == 'depth':
-        trainset = KittiSet(args.kitti_dir, preprocess, make_sequential=False)
+        trainset = KittiSet(args.kitti_dir, preprocess, pose_dataset=False)
         valset = KittiSet(args.kitti_dir,
                           preprocess,
                           False,
-                          make_sequential=False)
+                          pose_dataset=False)
     else:
 
         trainset = KittiSet(args.kitti_dir, transforms=preprocess)
