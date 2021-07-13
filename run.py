@@ -8,7 +8,7 @@ from dataset.data import *
 from vision.depth import *
 from vision.vision import *
 from support.test import *
-from networks.posenet import PoseNet
+from networks.posenet import PoseNet3D
 from networks.depthnet import DepthNet
 
 if __name__ == '__main__':
@@ -30,10 +30,11 @@ if __name__ == '__main__':
                         type=int,
                         default=2,
                         help='Batch size of input')
-    parser.add_argument('--test',
-                        type=bool,
-                        default=False,
-                        help='Trains Models')
+    parser.add_argument(
+        '--mode',
+        type=str,
+        default='pose',
+        help='Trains Models or Test the models. Args: [pose,depth,test]')
     parser.add_argument(
         '--video',
         type=str,
@@ -68,10 +69,7 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = PoseNet(n_layers=4, model_name="posenetv2.pt")
-
-    # visualize_depth(depth_model, args.video, preprocess, device,
-    #                 args.img_height, args.img_width)
+    pose_model = PoseNet3D()
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
@@ -82,8 +80,16 @@ if __name__ == '__main__':
 
     torch.cuda.empty_cache()
     #Dataset
-    trainset = KittiSet(args.kitti_dir, preprocess)
-    valset = KittiSet(args.kitti_dir, preprocess, False)
+
+    if args.mode != 'pose':
+        trainset = KittiSet(args.kitti_dir, preprocess)
+        valset = KittiSet(args.kitti_dir, preprocess, False)
+    else:
+        trainset = KittiSet(args.kitti_dir, preprocess, make_sequential=True)
+        valset = KittiSet(args.kitti_dir,
+                          preprocess,
+                          False,
+                          make_sequential=True)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
@@ -109,14 +115,18 @@ if __name__ == '__main__':
     #     print(rt[0])
     #     print(loss.item())
 
-    if args.test:
+    if args.mode == 'test':
         test_pose(pose_model, val_loader)
         test_depth(depth_model, val_loader)
         display_depth(model, preprocess, device, args.video, args.img_height,
                       args.img_width)
 
-    else:
+    elif args.mode == 'pose':
         train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
                    device, EPOCHS)
-# # train_depth(depth_model, train_loader, val_loader, depth_optim,
-# loss_fn, device, EPOCHS)
+
+    elif args.mode == 'depth':
+        train_depth(depth_model, train_loader, val_loader, depth_optim,
+                    loss_fn, device, EPOCHS)
+    else:
+        print("Please choose an available mode: [test, pose, depth]")

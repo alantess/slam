@@ -100,7 +100,7 @@ def train_pose(model,
     :return: None 
     """
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e6:.1f}M")
+    print(f"------MODEL PARAMS------\nPOSE PARAMS: {params/1e6:.1f}M")
     scaler = GradScaler()
     best_score = np.inf
     w1, w2, w3 = 0.1, 0.1, 0.5
@@ -117,25 +117,21 @@ def train_pose(model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (img, tgt, depth, Rt, K, K_inv) in enumerate(loop):
-            img = img.to(device, dtype=torch.float32)
-            tgt = tgt.to(device, dtype=torch.float32)
-            depth = depth.to(device, dtype=torch.float32)
+        for i, (frames, Rt, K) in enumerate(loop):
+            frames = frames.to(device, dtype=torch.float32)
             Rt = Rt.to(device, dtype=torch.float32)
             K = K.to(device, dtype=torch.float32)
-            K_inv = K_inv.to(device, dtype=torch.float32)
 
             for p in model.parameters():
                 p.grad = None
 
             with autocast():
-                pose = model(depth, K_inv)
+                pose = model(frames)
                 loss = loss_fn(pose, Rt)
                 # err1, err2 = compute_pose_loss(pose, Rt)
                 # loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
-
             scaler.update()
 
             total_loss += loss.item()
@@ -144,16 +140,13 @@ def train_pose(model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (img, tgt, depth, Rt, K, K_inv) in enumerate(val_loop):
-                img = img.to(device, dtype=torch.float32)
-                tgt = tgt.to(device, dtype=torch.float32)
-                depth = depth.to(device, torch.float32)
+            for j, (frames, Rt, K) in enumerate(val_loop):
+                frames = frames.to(device, dtype=torch.float32)
                 Rt = Rt.to(device, dtype=torch.float32)
                 K = K.to(device, dtype=torch.float32)
-                K_inv = K_inv.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = model(depth, K_inv)
+                    pose = model(frames)
                     v_loss = loss_fn(pose, Rt)
                     # v_err1, v_err2 = compute_pose_loss(pose, Rt)
                     # v_loss = (v_err1 * w1) + (v_err2 * w2)
