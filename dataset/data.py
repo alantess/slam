@@ -111,11 +111,10 @@ class KittiSet(Dataset):
 
 #     preprocess = torchvision.transforms.Compose([
 #         torchvision.transforms.ToTensor(),
-#         torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-#                                          std=[0.229, 0.224, 0.225])
+#         torchvision.transforms.Normalize(mean=[0.43216, 0.394666, 0.37645],
+#                                          std=[0.22803, 0.22145, 0.216989])
 #     ])
 #     path = "/media/alan/seagate/datasets/kitti/cpp/"
 #     dataset = KittiSet(path, preprocess)
-#     loader = DataLoader(dataset, 1)
-#     s, s_, k = next(iter(loader))
-#     print(s.size())
+#     loader = DataLoader(dataset, batch_size=16)
+#     u, x, y = next(iter(loader))

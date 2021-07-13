@@ -52,16 +52,26 @@ if __name__ == '__main__':
     BATCH_SIZE = args.batch
     PIN_MEM = True
     NUM_WORKERS = 4
-    EPOCHS = 10
+    EPOCHS = 20
 
+    torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
 
-    preprocess = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize((args.img_height, args.img_width)),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
+    if args.mode == 'pose':
+        preprocess = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((args.img_height, args.img_width)),
+            transforms.Normalize(mean=[0.43216, 0.394666, 0.37645],
+                                 std=[0.22803, 0.22145, 0.216989])
+        ])
+    else:
+        preprocess = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((args.img_height, args.img_width)),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])
+
     inv_preprocess = transforms.Compose([
         transforms.Normalize(mean=[0., 0., 0.],
                              std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
@@ -78,18 +88,16 @@ if __name__ == '__main__':
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
-    torch.cuda.empty_cache()
-    #Dataset
-
-    if args.mode != 'pose':
-        trainset = KittiSet(args.kitti_dir, preprocess)
-        valset = KittiSet(args.kitti_dir, preprocess, False)
-    else:
-        trainset = KittiSet(args.kitti_dir, preprocess, make_sequential=True)
+    if args.mode == 'depth':
+        trainset = KittiSet(args.kitti_dir, preprocess, make_sequential=False)
         valset = KittiSet(args.kitti_dir,
                           preprocess,
                           False,
-                          make_sequential=True)
+                          make_sequential=False)
+    else:
+
+        trainset = KittiSet(args.kitti_dir, transforms=preprocess)
+        valset = KittiSet(args.kitti_dir, transforms=preprocess, train=False)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,

@@ -13,7 +13,7 @@ class PoseNet3D(nn.Module):
         self.actiivation = nn.GELU()
         self.encoder = Encoder3d()
         mlps = {}
-        fc_neurons = [512, 256, 256, 128, 64, 32]
+        fc_neurons = [512, 128, 32]
         for i in range(len(fc_neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(fc_neurons[i], fc_neurons[i + 1])
