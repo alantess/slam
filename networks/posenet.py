@@ -18,10 +18,10 @@ class PoseNet(nn.Module):
         mlps = {}
         convs = {}
         # Set up FC
-        self.input_fc = nn.Linear(11264, 512)
+        self.input_fc = nn.Linear(11264, 1024)
         self.translation_fc = nn.Linear(32, 3)
         self.rotation_fc = nn.Linear(32, 9)
-        neurons = [512, 128, 128, 32]
+        neurons = [1024, 512, 512, 256, 128, 128, 32]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
