@@ -13,10 +13,8 @@ class KittiSet(Dataset):
                  transforms=None,
                  train=True,
                  frame_skip=True,
-                 pose_dataset=True,
                  video_frames=16):
         self.transforms = transforms
-        self.pose_dataset = pose_dataset
         self.video_frames = video_frames
         self.mode = 'train.txt' if train else 'val.txt'
         self.folders = [root + f[:-1] for f in open(root + self.mode)]
@@ -43,24 +41,15 @@ class KittiSet(Dataset):
             else:
                 inc = 1
 
-            if not self.pose_dataset:
-                for i in range(0, n - 1, inc):
-                    sample = {
-                        "frame": imgs[i],
-                        "next_frame": imgs[i + 1],
-                        "depth": depth[i + 1],
-                        "poses": poses[i + 1].reshape(3, 4),
-                        "intrinsic": k,
-                    }
-                    seq_set.append(sample)
-            else:
-                for i in range(n):
-                    sample = {
-                        'depth': depth[i],
-                        'poses': poses[i].reshape(3, 4),
-                        "intrinsic": k
-                    }
-                    seq_set.append(sample)
+            for i in range(0, n - 1, inc):
+                sample = {
+                    "frame": imgs[i],
+                    "next_frame": imgs[i + 1],
+                    "depth": depth[i + 1],
+                    "poses": poses[i + 1].reshape(3, 4),
+                    "intrinsic": k,
+                }
+                seq_set.append(sample)
 
         self.samples = seq_set
 
@@ -70,31 +59,24 @@ class KittiSet(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
 
-        if not self.pose_dataset:
-            s = cv.imread(sample["frame"])  #HxWxC
-            s_ = cv.imread(sample["next_frame"])
-
+        s = cv.imread(sample["frame"])  #HxWxC
+        s_ = cv.imread(sample["next_frame"])
         depth = cv.imread(sample["depth"])
         Rt = sample["poses"]
         k = sample["intrinsic"]
         k_inv = np.linalg.inv(k)
 
         if self.transforms:
-            if not self.pose_dataset:
-                s = self.transforms(s)
-                s_ = self.transforms(s_)
-
             grayscale = torchvision.transforms.Grayscale()
+            s = self.transforms(s)
+            s_ = self.transforms(s_)
             depth = self.transforms(depth)
             depth = grayscale(depth)
             Rt = torch.from_numpy(Rt)
             k = torch.from_numpy(k)
             k_inv = torch.from_numpy(k_inv)
 
-        if not self.pose_dataset:
-            return s, s_, depth, Rt, k, k_inv
-        else:
-            return depth, Rt, k
+        return s, s_, depth, Rt, k, k_inv
 
 
 # if __name__ == '__main__':
@@ -107,5 +89,5 @@ class KittiSet(Dataset):
 #     ])
 #     path = "/media/alan/seagate/datasets/kitti/cpp/"
 #     dataset = KittiSet(path, preprocess)
-#     loader = DataLoader(dataset, batch_size=16)
-#     u, x, y = next(iter(loader))
+#     loader = DataLoader(dataset, batch_size=1)
+#     s, s_, d, rt, k, k_inv = next(iter(loader))

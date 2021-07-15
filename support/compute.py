@@ -29,6 +29,32 @@ def compute_pose_loss(pred_pose, gt_pose):
     return rot_err, translation_err
 
 
+def compute_translation_err(pred_trans, gt_trans):
+    """
+    𝑡𝑒𝑟𝑟=∆x=‖𝑥−𝑥̂‖2
+    Euclidean distance between the estimated locatiosn
+    """
+    pass
+
+
+def compute_rot_err(pred_rot, gt_rot):
+    """
+     𝑟𝑜𝑡𝑒𝑟𝑟=α=2cos−1|𝑞𝑞̂|180/𝜋
+     Rot err is minimun angle required to aligh the gt and estimated orientations. 
+     Measured as euler/quat angle (degreees)
+    """
+    pass
+
+
+def compute_pixel_coords(extrinsics_params, pxl_world_coords):
+    """
+    Takes the world pixel coordinates(Pw) and homogenous transformation of the extrinsic params (Rt)
+    Returns:
+    Camera Coordinate System (Pc)
+    """
+    pass
+
+
 @torch.no_grad()
 def get_depth(
     img,

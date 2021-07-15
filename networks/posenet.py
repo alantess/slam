@@ -1,9 +1,33 @@
 import os
 import torch
-from .encoder import *
+from encoder import *
 from torch import nn
 
 
+# Reference:  https://arxiv.org/pdf/2003.10629v1.pdf (KFNet: Learning Temporal Camera Relocalization using Kalman Filtering)
+class KFNet(nn.Module):
+    def __init__(self):
+        super(KFNet, self).__init__()
+        # Input Convs
+        self.cost_volume = nn.Conv2d(3, 16, 1)
+        # SCoordNet
+        self.scoord = SCoordNet()
+        # OFlow
+        self.o_flow = OFlowNet()
+        # Process System
+
+        # Measurement System
+
+        # Filtering System
+    def forward(self, cur):
+        encode = self.cost_volume(cur)
+        x = self.o_flow(encode)
+
+        # x = self.scoord(cur)
+        return x
+
+
+# Inspired By: https://arxiv.org/pdf/1907.05272.pdf
 class PoseNet(nn.Module):
     def __init__(
         self,
@@ -14,28 +38,27 @@ class PoseNet(nn.Module):
         super(PoseNet, self).__init__()
         self.chkpt_dir = chkpt
         self.file = os.path.join(chkpt, model_name)
-        self.actiivation = nn.GELU()
-        mlps = {}
-        convs = {}
-        # Set up FC
-        self.input_fc = nn.Linear(11264, 1024)
-        self.translation_fc = nn.Linear(32, 3)
-        self.rotation_fc = nn.Linear(32, 9)
+        self.actiivation = nn.SELU()
+        # Encoder
+        # Localizer
         neurons = [1024, 512, 512, 256, 128, 128, 32]
         for i in range(len(neurons) - 1):
             layer_name = "fc" + str(i)
             mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
-        # Convs
-        layers = [3, 16, 32, 64, 128, 256, 512]
-        for i in range(len(layers) - 1):
-            layer_name = "layer" + str(i)
-            convs[layer_name] = nn.Conv2d(layers[i], layers[i + 1], 3, 1)
 
-        self.pool = nn.MaxPool2d(2)
-        self.fcl = nn.ModuleDict(mlps)
-        self.convs = nn.ModuleDict(convs)
+        self.localizer = nn.ModuleDict(mlps)
+        # Gru
+        # Ouputs
+        self.translation_fc = nn.Linear(32, 3)
+        self.rotation_fc = nn.Linear(32, 9)
 
-    def forward(self, depth, k_inv):
+    def forward(self, s, s_):
+        """
+        Args:
+            state (s) and next_state (s_) Bx3xHxW
+        Returns:
+            Translation and Rotational Matrix
+        """
         depth = depth.squeeze(1)
         x = self.get_pixels(depth, k_inv)
         for i in self.convs:
@@ -85,10 +108,9 @@ class PoseNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-# if __name__ == '__main__':
-#     torch.manual_seed(55)
-#     ex = torch.randn(1, 3, 16, 256, 832)
-#     k = torch.randn(1, 3, 3)
-#     model = PoseNet3D()
-#     y = model(ex)
-#     print(y.size())
+if __name__ == '__main__':
+    torch.manual_seed(55)
+    ex = torch.randn(1, 3, 256, 832)
+    model = KFNet()
+    y = model(ex)
+    print(y.size())
