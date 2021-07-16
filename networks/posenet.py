@@ -9,108 +9,51 @@ class KFNet(nn.Module):
     def __init__(self):
         super(KFNet, self).__init__()
         # Input Convs
-        self.cost_volume = nn.Conv2d(3, 16, 1)
-        # SCoordNet
+        self.cost_volume = nn.Conv2d(3, 8, 1, 1)
+        # SCoordNet (Measurement Systems)
         self.scoord = SCoordNet()
-        # OFlow
+        # OFlow (Process Systems)
         self.o_flow = OFlowNet()
-        # Process System
-
-        # Measurement System
+        self.mean_t = None
+        self.covar_t = None
+        # Pose estimation
+        self.pose_estimator = PoseEstimator()
 
         # Filtering System
-    def forward(self, cur):
-        encode = self.cost_volume(cur)
-        x = self.o_flow(encode)
+    def forward(self, prev, cur):
+        # State obs and measurement noise covariance
+        state_covar, state_mean = self.scoord(cur)  #Bx2048x1 & Bx2048x3
+        cur = self.cost_volume(cur)
+        prev = self.cost_volume(prev)
+        encode = torch.cat([prev, cur], dim=1)
+        # Prior noise covariance and prior state mean
+        process_noise_covar, process_mean = self.o_flow(
+            encode)  #Bx2048x3 & Bx2048x1
 
-        # x = self.scoord(cur)
-        return x
+        if not self.mean_t:
+            self.mean_t = state_mean
+        if not self.covar_t:
+            self.covar_t = state_covar
 
+        self.mean_t, self.covar_t = self.kalman_filter(process_mean,
+                                                       process_noise_covar)
 
-# Inspired By: https://arxiv.org/pdf/1907.05272.pdf
-class PoseNet(nn.Module):
-    def __init__(
-        self,
-        n_layers=4,
-        model_name='posenet.pt',
-        chkpt='model_checkpoints',
-    ):
-        super(PoseNet, self).__init__()
-        self.chkpt_dir = chkpt
-        self.file = os.path.join(chkpt, model_name)
-        self.actiivation = nn.SELU()
-        # Encoder
-        # Localizer
-        neurons = [1024, 512, 512, 256, 128, 128, 32]
-        for i in range(len(neurons) - 1):
-            layer_name = "fc" + str(i)
-            mlps[layer_name] = nn.Linear(neurons[i], neurons[i + 1])
+        pose = self.pose_estimator(self.mean_t)
 
-        self.localizer = nn.ModuleDict(mlps)
-        # Gru
-        # Ouputs
-        self.translation_fc = nn.Linear(32, 3)
-        self.rotation_fc = nn.Linear(32, 9)
+        return pose
 
-    def forward(self, s, s_):
-        """
-        Args:
-            state (s) and next_state (s_) Bx3xHxW
-        Returns:
-            Translation and Rotational Matrix
-        """
-        depth = depth.squeeze(1)
-        x = self.get_pixels(depth, k_inv)
-        for i in self.convs:
-            x = self.actiivation(self.pool(self.convs[i](x)))
-
-        x = x.flatten(1)
-        x = self.actiivation(self.input_fc(x))
-        for i in self.fcl:
-            x = self.actiivation(self.fcl[i](x))
-
-        r = self.rotation_fc(x).view(-1, 3, 3)
-        t = self.translation_fc(x).unsqueeze(2)
-        x = torch.cat([r, t], dim=2)
-        return x
-
-    def get_pixels(self, depth, intrinsics_inv):
-        b, h, w = depth.size()
-        pixel_coords = self.set_id_grid(depth)
-        current_pixel_coords = pixel_coords[:, :, :h, :w].expand(
-            b, 3, h, w).reshape(b, 3, -1)  # [B, 3, H*W]
-        cam_coords = (intrinsics_inv @ current_pixel_coords).reshape(
-            b, 3, h, w)
-
-        return cam_coords * depth.unsqueeze(1)
-
-    def set_id_grid(self, depth):
-        b, h, w = depth.size()
-        i_range = torch.arange(0,
-                               h).view(1, h,
-                                       1).expand(1, h,
-                                                 w).type_as(depth)  # [1, H, W]
-        j_range = torch.arange(0,
-                               w).view(1, 1,
-                                       w).expand(1, h,
-                                                 w).type_as(depth)  # [1, H, W]
-        ones = torch.ones(1, h, w).type_as(depth)
-
-        pixel_coords = torch.stack((j_range, i_range, ones), dim=1)
-        return pixel_coords
-
-    def save(self):
-        if not os.path.exists(self.chkpt_dir):
-            os.mkdir(self.chkpt_dir)
-        torch.save(self.state_dict(), self.file)
-
-    def load(self):
-        self.load_state_dict(torch.load(self.file))
+    def kalman_filter(self, prev_mean, prev_covariance):
+        estimated_mean = self.mean_t - prev_mean
+        estimated_covar = self.covar_t - prev_covariance
+        k_t = prev_covariance / torch.sqrt(prev_covariance + self.covar_t)
+        mean = estimated_mean + (k_t * estimated_mean)
+        covar = estimated_covar * (1 - k_t)
+        return mean, covar
 
 
 if __name__ == '__main__':
     torch.manual_seed(55)
     ex = torch.randn(1, 3, 256, 832)
     model = KFNet()
-    y = model(ex)
+    y = model(ex, ex)
     print(y.size())

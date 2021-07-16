@@ -22,41 +22,40 @@ class Encoder(nn.Module):
 
 
 class SCoordNet(nn.Module):
-    def __init__(self, out_channels=4):
+    def __init__(self, out_channels=3):
         super(SCoordNet, self).__init__()
         convs = {}
         self.activation = nn.SELU()
-        convolutions = [[3, 3, 1], [3, 64, 1], [3, 64, 1], [3, 256, 2],
-                        [3, 256, 1], [3, 512, 2], [3, 512, 1], [3, 1024, 2],
-                        [3, 1024, 1], [3, 512, 1], [3, 256, 1], [1, 128, 1],
-                        [1, out_channels, 1]]
+        resnet = models.resnet152()
+        modules = list(resnet.children())
+        self.convs = nn.Sequential(*modules[:8])
+        self.mlps = {
+            "fc1": nn.Linear(208, 64),
+            "fc2": nn.Linear(64, 64),
+            "fc3": nn.Linear(64, 32),
+            "z": nn.Linear(32, 3),
+            "v": nn.Linear(32, 1)
+        }
 
-        for i in range(len(convolutions) - 1):
-            layer_name = 'conv' + str(i)
-            kernel = convolutions[i][0]
-            input_channel = convolutions[i][1]
-            out_channel = convolutions[i + 1][1]
-            stride = convolutions[i][2]
 
-            convs[layer_name] = nn.Conv2d(input_channel,
-                                          out_channel,
-                                          kernel,
-                                          stride=stride)
-
-        self.convs = nn.ModuleDict(convs)
+# self.mlps = nn.ModuleDict(mlp)
 
     def forward(self, x):
-        for i in self.convs:
-            if i == 'conv11':
-                x = self.convs[i](x)
+        feats = self.convs(x)
+        feats = feats.flatten(2)
+        for i in self.mlps:
+            if i == 'z':
+                z_t = torch.exp(self.mlps[i](feats)) * 1e-2
+            elif i == 'v':
+                v_t = self.mlps[i](feats)
             else:
-                x = self.activation(self.convs[i](x))
+                feats = self.activation(self.mlps[i](feats))
 
-        return x
+        return v_t, z_t
 
 
 class OFlowNet(nn.Module):
-    def __init__(self, n_channels=3):
+    def __init__(self, n_channels=1):
         super(OFlowNet, self).__init__()
         self.activation = nn.SELU()
         resnet = models.resnet152()
@@ -77,7 +76,7 @@ class OFlowNet(nn.Module):
             "layer5": encoder[7:8]
         }
         self.upsample = nn.Upsample(scale_factor=2)
-        decoder = {
+        self.upconvs = {
             "l5_up": nn.Conv2d(2048, 2048, 1),
             "l4_up": nn.Conv2d(1024, 1024, 1),
             "l3_up": nn.Conv2d(512, 512, 1),
@@ -89,8 +88,23 @@ class OFlowNet(nn.Module):
             "conv2_up": nn.Conv2d(256 + 64, 64, 1, 1),
             "conv1_up": nn.Conv2d(64 + 64, n_channels, 1, 1)
         }
+        self.mlps = {
+            "fc1": nn.Linear(208, 64),
+            "fc2": nn.Linear(64, 64),
+            "fc3": nn.Linear(64, 32),
+            "out": nn.Linear(32, 1)
+        }
+        self.feat_extract = {
+            "l1": nn.Conv2d(n_channels, 64, 1, 1),
+            # "l2": nn.Conv2d(64, 64, 1),
+            "l3": nn.Conv2d(64, 32, 1, 1),
+            "l4": nn.Conv2d(32, 1, 1),
+            "out": nn.Linear(3328, 2048),
+            'reshape': nn.Linear(1, 3)
+        }
+        self.pool = nn.MaxPool2d(2)
         self.conv_img = nn.Conv2d(16, 64, 1, 1)
-        self.upconvs = nn.ModuleDict(decoder)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         img = self.activation(self.conv_img(x))
@@ -100,6 +114,13 @@ class OFlowNet(nn.Module):
         layer3 = self.encoder["layer3"](layer2)
         layer4 = self.encoder["layer4"](layer3)
         layer5 = self.encoder["layer5"](layer4)
+        # Encoder Features
+        feats = layer5.flatten(2)
+        for i in self.mlps:
+            if i == 'out':
+                feats = torch.exp(self.mlps[i](feats)) * 1e-2
+            else:
+                feats = self.activation(self.mlps[i](feats))
         # L5
         x = self.upsample(layer5)
         layer4 = self.activation(self.upconvs["l4_up"](layer4))
@@ -124,4 +145,50 @@ class OFlowNet(nn.Module):
         x = self.upsample(x)
         x = torch.cat([x, img], dim=1)
         x = self.upconvs["conv1_up"](x)
+
+        for i in self.feat_extract:
+            if i == 'out':
+                x = x.flatten(1)
+                probs = self.activation(self.feat_extract[i](x))
+                probs = probs.unsqueeze(2)
+            elif i == 'reshape':
+                probs = self.feat_extract[i](probs)
+
+            else:
+                x = self.activation(self.pool(self.feat_extract[i](x)))
+
+        # probs = self.softmax(probs).unsqueeze(2)
+
+        return feats, probs
+
+
+class PoseEstimator(nn.Module):
+    def __init__(self):
+        super(PoseEstimator, self).__init__()
+        self.activation = nn.SELU()
+        self.unflatten = nn.Unflatten(2, (32, 64))
+        self.conv = nn.Conv2d(3, 1, 3, 1)
+        self.mlps = {
+            "fc1": nn.Linear(1860, 1024),
+            "fc2": nn.Linear(1024, 512),
+            "fc3": nn.Linear(512, 512),
+            "fc3": nn.Linear(512, 128),
+            "rotation": nn.Linear(128, 9),
+            "translation": nn.Linear(128, 3)
+        }
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        x = self.unflatten(x)
+        x = self.activation(self.conv(x))
+        x = x.flatten(1)
+        for i in self.mlps:
+            if i == 'rotation':
+                rot = (self.mlps[i](x)).view(-1, 3, 3)
+            elif i == 'translation':
+                t = (self.mlps[i](x)).unsqueeze(2)
+            else:
+                x = self.activation(self.mlps[i](x))
+
+        x = torch.cat([rot, t], dim=2)
         return x
