@@ -110,6 +110,7 @@ def train_pose(model,
         print('MODEL LOADED.')
 
     model.to(device)
+    mean, covar = 1, 1
 
     print("---- Training Pose ----")
     for epoch in range(epochs):
@@ -126,7 +127,7 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                pose = model(s, s_)
+                pose, mean, covar = model(s, s_, mean, covar)
                 # loss = loss_fn(pose, Rt)
                 err1, err2 = compute_pose_loss(pose, Rt)
                 loss = (err1 * w1) + (err2 * w2)

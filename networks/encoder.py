@@ -47,10 +47,10 @@ class SCoordNet(nn.Module):
         feats = self.convs(x)
         feats = feats.flatten(2)
         for i in self.mlps:
-            if i == 'z':
-                z_t = torch.exp(self.mlps[i](feats)) * 1e-2
-            elif i == 'v':
-                v_t = self.mlps[i](feats)
+            if i == 'v':
+                v_t = torch.exp(self.mlps[i](feats))
+            elif i == 'z':
+                z_t = self.mlps[i](feats)
             else:
                 feats = self.activation(self.mlps[i](feats))
 
@@ -109,7 +109,7 @@ class OFlowNet(nn.Module):
         })
         self.feat_extract = nn.ModuleDict({
             "l1": nn.Conv2d(n_channels, 64, 1, 1),
-            # "l2": nn.Conv2d(64, 64, 1),
+            "l2": nn.Conv2d(64, 64, 1),
             "l3": nn.Conv2d(64, 32, 1, 1),
             "l4": nn.Conv2d(32, 1, 1),
             "out": nn.Linear(3328, 2048),
@@ -120,6 +120,12 @@ class OFlowNet(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
+        """
+        Args:
+            x: Concatentation of the S(t-1) and S(t)
+        Returns:
+            Process Noise Covariance (W_t),  Transition Mat (G_t), 
+        """
         img = self.activation(self.conv_img(x))
         # Encoder
         layer1 = self.encoder["layer1"](x)

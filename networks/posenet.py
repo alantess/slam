@@ -24,29 +24,32 @@ class KFNet(nn.Module):
         self.pose_estimator = PoseEstimator()
 
         # Filtering System
-    def forward(self, prev, cur):
-        state_covar, state_mean = self.scoord(cur)  #Bx2048x1 & Bx2048x3
+    def forward(self, prev, cur, prior_mean=1, prior_noise=1):
+        # State obs and measurement noise covariance
+        v_t, z_t = self.scoord(cur)  #Bx2048x3 & Bx2048x1
         cur = self.cost_volume(cur)
         prev = self.cost_volume(prev)
         encode = torch.cat([prev, cur], dim=1)
         # Prior noise covariance and prior state mean
-        process_noise_covar, process_mean = self.o_flow(
-            encode)  #Bx2048x3 & Bx2048x1
+        w_t, g_t = self.o_flow(encode)  #Bx2048x3 & Bx2048x1
 
-        mean_t, covar_t = self.kalman_filter(process_mean, process_noise_covar,
-                                             state_mean, state_covar)
+        prior_state_mean = g_t * prior_mean  # theta
+        prior_state_covar = (g_t * prior_noise) + w_t  # R_t
+
+        mean_t, covar_t = self.kalman_filter(prior_state_mean,
+                                             prior_state_covar, z_t, v_t)
 
         pose = self.pose_estimator(mean_t)
 
-        return pose
+        return pose, mean_t, covar_t
 
-    def kalman_filter(self, prev_mean, prev_covariance, mean_t, covar_t):
-        estimated_mean = mean_t - prev_mean  # innovation
-        estimated_covar = covar_t - prev_covariance
-        k_t = prev_covariance / (prev_covariance + covar_t)
-        mean = prev_mean + (k_t * estimated_mean)
-        covar = estimated_covar * k_t
-        return mean, covar
+    def kalman_filter(self, prev_mean, r_t, z_t, v_t):
+        estimated_mean = z_t - prev_mean  # innovation
+        k_t = r_t / (r_t + v_t)  # Kalman Gain
+        new_state = prev_mean + (k_t * estimated_mean)  # Update state mean
+        new_r_t = r_t * (1 - k_t)  # Update state covariance
+        measuremeant_residuals = z_t - new_state
+        return measuremeant_residuals, new_r_t
 
     def save(self):
         if not os.path.exists(self.chkpt_dir):
@@ -62,6 +65,10 @@ class KFNet(nn.Module):
 #     torch.manual_seed(55)
 #     ex = torch.randn(1, 3, 256, 832, device=torch.device('cuda'))
 #     model = KFNet().to(device)
-#     y = model(ex, ex)
+#     y, mean, covar = model(ex, ex)
 #     print(y)
+#     print(mean)
+#     y, mean, covar = model(ex, ex, mean, covar)
+#     print(mean)
+
 #     print(y.size())
