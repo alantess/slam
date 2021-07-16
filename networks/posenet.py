@@ -30,9 +30,9 @@ class KFNet(nn.Module):
         process_noise_covar, process_mean = self.o_flow(
             encode)  #Bx2048x3 & Bx2048x1
 
-        if not self.mean_t:
+        if self.mean_t is None:
             self.mean_t = state_mean
-        if not self.covar_t:
+        if self.covar_t is None:
             self.covar_t = state_covar
 
         self.mean_t, self.covar_t = self.kalman_filter(process_mean,
