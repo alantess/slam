@@ -43,9 +43,9 @@ class KFNet(nn.Module):
     def kalman_filter(self, prev_mean, prev_covariance, mean_t, covar_t):
         estimated_mean = mean_t - prev_mean  # innovation
         estimated_covar = covar_t - prev_covariance
-        k_t = prev_covariance / torch.sqrt(prev_covariance + covar_t)
-        mean = estimated_mean + (k_t * estimated_mean)
-        covar = estimated_covar * (1 - k_t)
+        k_t = prev_covariance / (prev_covariance + covar_t)
+        mean = prev_mean + (k_t * estimated_mean)
+        covar = estimated_covar * k_t
         return mean, covar
 
     def save(self):
@@ -63,4 +63,5 @@ class KFNet(nn.Module):
 #     ex = torch.randn(1, 3, 256, 832, device=torch.device('cuda'))
 #     model = KFNet().to(device)
 #     y = model(ex, ex)
+#     print(y)
 #     print(y.size())

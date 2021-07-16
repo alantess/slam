@@ -163,7 +163,7 @@ class OFlowNet(nn.Module):
             else:
                 x = self.activation(self.pool(self.feat_extract[i](x)))
 
-        # probs = self.softmax(probs).unsqueeze(2)
+        # probs = self.softmax(probs)
 
         return feats, probs
 
