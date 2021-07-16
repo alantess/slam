@@ -112,7 +112,7 @@ class OFlowNet(nn.Module):
             "l2": nn.Conv2d(64, 64, 1),
             "l3": nn.Conv2d(64, 32, 1, 1),
             "l4": nn.Conv2d(32, 1, 1),
-            "out": nn.Linear(3328, 2048),
+            "output": nn.Linear(832, 2048),
             'reshape': nn.Linear(1, 3)
         })
         self.pool = nn.MaxPool2d(2)
@@ -166,7 +166,7 @@ class OFlowNet(nn.Module):
         x = self.upconvs["conv1_up"](x)
 
         for i in self.feat_extract:
-            if i == 'out':
+            if i == 'output':
                 x = x.flatten(1)
                 probs = self.activation(self.feat_extract[i](x))
                 probs = probs.unsqueeze(2)
@@ -176,7 +176,7 @@ class OFlowNet(nn.Module):
             else:
                 x = self.activation(self.pool(self.feat_extract[i](x)))
 
-        # probs = self.softmax(probs)
+        probs = self.softmax(probs)
 
         return feats, probs
 

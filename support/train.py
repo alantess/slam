@@ -103,17 +103,18 @@ def train_pose(model,
     print(f"------MODEL PARAMS------\nPOSE PARAMS: {params/1e6:.1f}M")
     scaler = GradScaler()
     best_score = np.inf
-    w1, w2, w3 = 0.1, 0.1, 0.5
+    w1, w2, w3 = 1, 1, 1
 
     if load_model:
         model.load()
         print('MODEL LOADED.')
 
     model.to(device)
-    mean, covar = 1, 1
 
     print("---- Training Pose ----")
     for epoch in range(epochs):
+        mean, covar = 1, 1
+        v_mean, v_covar = 1, 1
         loop = tqdm(train_loader)
         total_loss = 0
         val_loss = 0
@@ -127,7 +128,9 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                pose, mean, covar = model(s, s_, mean, covar)
+                pose, _, _ = model(s, s_, mean, covar)
+                # mean = mean.detach()
+                # covar = covar.detach()
                 # loss = loss_fn(pose, Rt)
                 err1, err2 = compute_pose_loss(pose, Rt)
                 loss = (err1 * w1) + (err2 * w2)
@@ -147,7 +150,9 @@ def train_pose(model,
                 Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = model(s, s_)
+                    pose, _, _ = model(s, s_, v_mean, v_covar)
+                    # v_mean = v_mean.detach()
+                    # v_covar = v_covar.detach()
                     # v_loss = loss_fn(pose, Rt)
                     v_err1, v_err2 = compute_pose_loss(pose, Rt)
                     v_loss = (v_err1 * w1) + (v_err2 * w2)

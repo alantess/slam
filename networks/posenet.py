@@ -48,8 +48,9 @@ class KFNet(nn.Module):
         k_t = r_t / (r_t + v_t)  # Kalman Gain
         new_state = prev_mean + (k_t * estimated_mean)  # Update state mean
         new_r_t = r_t * (1 - k_t)  # Update state covariance
-        measuremeant_residuals = z_t - new_state
-        return measuremeant_residuals, new_r_t
+
+        # measuremeant_residuals = z_t - new_state
+        return new_state, new_r_t
 
     def save(self):
         if not os.path.exists(self.chkpt_dir):

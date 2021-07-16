@@ -20,6 +20,8 @@ class KittiSet(Dataset):
         self.folders = [root + f[:-1] for f in open(root + self.mode)]
         self.total_size = 0
         self.frame_skip = frame_skip
+        self.mean = 0.0
+        self.std = 0.229
         self.samples = None
         self._crawl_folders()
 
@@ -49,9 +51,14 @@ class KittiSet(Dataset):
                     "poses": poses[i + 1].reshape(3, 4),
                     "intrinsic": k,
                 }
+                x = sample['poses']
+                self.mean += (x - x.min())
+                self.std += (x.max() - x.min())
                 seq_set.append(sample)
 
         self.samples = seq_set
+        self.mean /= int(len(self.samples))
+        self.std /= int(len(self.samples))
 
     def __len__(self):
         return len(self.samples)
@@ -73,6 +80,8 @@ class KittiSet(Dataset):
             depth = self.transforms(depth)
             depth = grayscale(depth)
             Rt = torch.from_numpy(Rt)
+            # Rt = (Rt - Rt.min()) / (Rt.max() - Rt.min())
+            Rt = (Rt - self.mean) / self.std
             k = torch.from_numpy(k)
             k_inv = torch.from_numpy(k_inv)
 
