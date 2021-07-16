@@ -61,15 +61,52 @@ class KFNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-# if __name__ == '__main__':
-#     device = torch.device('cuda')
-#     torch.manual_seed(55)
-#     ex = torch.randn(1, 3, 256, 832, device=torch.device('cuda'))
-#     model = KFNet().to(device)
-#     y, mean, covar = model(ex, ex)
-#     print(y)
-#     print(mean)
-#     y, mean, covar = model(ex, ex, mean, covar)
-#     print(mean)
+class PoseNet(nn.Module):
+    def __init__(self, model_name="posenetrnn.pt", chkpt="model_checkpoints"):
+        super(PoseNet, self).__init__()
+        self.chkpt_dir = chkpt
+        self.file = os.path.join(chkpt, model_name)
+        self.activation = nn.SELU()
+        self.encoder = Encoder()
+        self.mlps = nn.ModuleDict({
+            "fc1": nn.Linear(208, 256),
+            "fc2": nn.Linear(256, 256),
+            "fc3": nn.Linear(256, 512),
+        })
+        self.decode_fc = nn.Linear(256, 128)
+        self.rot_fc = nn.Linear(128, 9)
+        self.transl_fc = nn.Linear(128, 3)
+        self.gru = nn.GRU(512, 256, 4, batch_first=True)
 
-#     print(y.size())
+    def forward(self, prev, cur):
+        x = self.encoder(prev, cur)
+        x = x.flatten(2)
+        for i in self.mlps:
+            x = self.activation(self.mlps[i](x))
+
+        x, _ = self.gru(x)
+        x = torch.linalg.norm(x, axis=1)
+        x = self.activation(self.decode_fc(x))
+        r = (self.rot_fc(x)).view(-1, 3, 3)
+        t = (self.transl_fc(x)).unsqueeze(2)
+        x = torch.cat([r, t], dim=2)
+
+        return x
+
+
+# if __name__ == '__main__':
+#     device = torch.device('cpu')
+#     torch.manual_seed(55)
+#     ex = torch.randn(1, 3, 256, 832, device=device)
+#     posenet = PoseNet().to(device)
+#     x = posenet(ex, ex)
+#     print(x.size())
+
+# model = KFNet().to(device)
+# y, mean, covar = model(ex, ex)
+# print(y)
+# print(mean)
+# y, mean, covar = model(ex, ex, mean, covar)
+# print(mean)
+
+# print(y.size())
