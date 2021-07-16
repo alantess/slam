@@ -24,7 +24,6 @@ class Encoder(nn.Module):
 class SCoordNet(nn.Module):
     def __init__(self, out_channels=3):
         super(SCoordNet, self).__init__()
-        convs = {}
         self.activation = nn.SELU()
         resnet = models.resnet152()
         modules = list(resnet.children())
@@ -36,9 +35,7 @@ class SCoordNet(nn.Module):
             "z": nn.Linear(32, 3),
             "v": nn.Linear(32, 1)
         }
-
-
-# self.mlps = nn.ModuleDict(mlp)
+        self.mlps = nn.ModuleDict(self.mlps)
 
     def forward(self, x):
         feats = self.convs(x)
@@ -102,6 +99,10 @@ class OFlowNet(nn.Module):
             "out": nn.Linear(3328, 2048),
             'reshape': nn.Linear(1, 3)
         }
+        self.feat_extract = nn.ModuleDict(self.feat_extract)
+        self.mlps = nn.ModuleDict(self.mlps)
+        self.upconvs = nn.ModuleDict(self.upconvs)
+        self.encoder = nn.ModuleDict(self.encoder)
         self.pool = nn.MaxPool2d(2)
         self.conv_img = nn.Conv2d(16, 64, 1, 1)
         self.softmax = nn.Softmax(dim=1)
@@ -172,10 +173,11 @@ class PoseEstimator(nn.Module):
             "fc1": nn.Linear(1860, 1024),
             "fc2": nn.Linear(1024, 512),
             "fc3": nn.Linear(512, 512),
-            "fc3": nn.Linear(512, 128),
+            "fc4": nn.Linear(512, 128),
             "rotation": nn.Linear(128, 9),
             "translation": nn.Linear(128, 3)
         }
+        self.mlps = nn.ModuleDict(self.mlps)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)

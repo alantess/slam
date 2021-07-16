@@ -79,7 +79,7 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = PoseNet()
+    pose_model = KFNet()
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
@@ -88,16 +88,8 @@ if __name__ == '__main__':
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
-    if args.mode == 'depth':
-        trainset = KittiSet(args.kitti_dir, preprocess, pose_dataset=False)
-        valset = KittiSet(args.kitti_dir,
-                          preprocess,
-                          False,
-                          pose_dataset=False)
-    else:
-
-        trainset = KittiSet(args.kitti_dir, transforms=preprocess)
-        valset = KittiSet(args.kitti_dir, transforms=preprocess, train=False)
+    trainset = KittiSet(args.kitti_dir, transforms=preprocess)
+    valset = KittiSet(args.kitti_dir, transforms=preprocess, train=False)
 
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,

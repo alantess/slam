@@ -1,6 +1,6 @@
 import os
 import torch
-from encoder import *
+from .encoder import *
 from torch import nn
 
 
@@ -51,9 +51,10 @@ class KFNet(nn.Module):
         return mean, covar
 
 
-if __name__ == '__main__':
-    torch.manual_seed(55)
-    ex = torch.randn(1, 3, 256, 832)
-    model = KFNet()
-    y = model(ex, ex)
-    print(y.size())
+# if __name__ == '__main__':
+#     device = torch.device('cuda')
+#     torch.manual_seed(55)
+#     ex = torch.randn(1, 3, 256, 832, device=torch.device('cuda'))
+#     model = KFNet().to(device)
+#     y = model(ex, ex)
+#     print(y.size())

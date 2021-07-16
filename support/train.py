@@ -117,16 +117,16 @@ def train_pose(model,
         total_loss = 0
         val_loss = 0
         # Training Loop
-        for i, (depth, Rt, K) in enumerate(loop):
-            depth = depth.to(device, dtype=torch.float32)
+        for i, (s, s_, _, Rt, _, _) in enumerate(loop):
+            s = s.to(device)
+            s_ = s_.to(device)
             Rt = Rt.to(device, dtype=torch.float32)
-            K = K.to(device, dtype=torch.float32)
 
             for p in model.parameters():
                 p.grad = None
 
             with autocast():
-                pose = model(depth, K.inverse())
+                pose = model(s, s_)
                 # loss = loss_fn(pose, Rt)
                 err1, err2 = compute_pose_loss(pose, Rt)
                 loss = (err1 * w1) + (err2 * w2)
@@ -140,13 +140,13 @@ def train_pose(model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (depth, Rt, K) in enumerate(val_loop):
-                depth = depth.to(device, dtype=torch.float32)
+            for j, (s, s_, _, Rt, _, _) in enumerate(val_loop):
+                s = s.to(device, dtype=torch.float32)
+                s_ = s_.to(device, dtype=torch.float32)
                 Rt = Rt.to(device, dtype=torch.float32)
-                K = K.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose = model(depth, K.inverse())
+                    pose = model(s, s_)
                     # v_loss = loss_fn(pose, Rt)
                     v_err1, v_err2 = compute_pose_loss(pose, Rt)
                     v_loss = (v_err1 * w1) + (v_err2 * w2)
