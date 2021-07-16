@@ -6,22 +6,25 @@ from torch import nn
 
 # Reference:  https://arxiv.org/pdf/2003.10629v1.pdf (KFNet: Learning Temporal Camera Relocalization using Kalman Filtering)
 class KFNet(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        model_name='kfnet.pt',
+        chkpt='model_checkpoints',
+    ):
         super(KFNet, self).__init__()
+        self.chkpt_dir = chkpt
+        self.file = os.path.join(chkpt, model_name)
         # Input Convs
         self.cost_volume = nn.Conv2d(3, 8, 1, 1)
         # SCoordNet (Measurement Systems)
         self.scoord = SCoordNet()
         # OFlow (Process Systems)
         self.o_flow = OFlowNet()
-        self.mean_t = None
-        self.covar_t = None
         # Pose estimation
         self.pose_estimator = PoseEstimator()
 
         # Filtering System
     def forward(self, prev, cur):
-        # State obs and measurement noise covariance
         state_covar, state_mean = self.scoord(cur)  #Bx2048x1 & Bx2048x3
         cur = self.cost_volume(cur)
         prev = self.cost_volume(prev)
@@ -30,25 +33,28 @@ class KFNet(nn.Module):
         process_noise_covar, process_mean = self.o_flow(
             encode)  #Bx2048x3 & Bx2048x1
 
-        if self.mean_t is None:
-            self.mean_t = state_mean
-        if self.covar_t is None:
-            self.covar_t = state_covar
+        mean_t, covar_t = self.kalman_filter(process_mean, process_noise_covar,
+                                             state_mean, state_covar)
 
-        self.mean_t, self.covar_t = self.kalman_filter(process_mean,
-                                                       process_noise_covar)
-
-        pose = self.pose_estimator(self.mean_t)
+        pose = self.pose_estimator(mean_t)
 
         return pose
 
-    def kalman_filter(self, prev_mean, prev_covariance):
-        estimated_mean = self.mean_t - prev_mean
-        estimated_covar = self.covar_t - prev_covariance
-        k_t = prev_covariance / torch.sqrt(prev_covariance + self.covar_t)
+    def kalman_filter(self, prev_mean, prev_covariance, mean_t, covar_t):
+        estimated_mean = mean_t - prev_mean  # innovation
+        estimated_covar = covar_t - prev_covariance
+        k_t = prev_covariance / torch.sqrt(prev_covariance + covar_t)
         mean = estimated_mean + (k_t * estimated_mean)
         covar = estimated_covar * (1 - k_t)
         return mean, covar
+
+    def save(self):
+        if not os.path.exists(self.chkpt_dir):
+            os.mkdir(self.chkpt_dir)
+        torch.save(self.state_dict(), self.file)
+
+    def load(self):
+        self.load_state_dict(torch.load(self.file))
 
 
 # if __name__ == '__main__':

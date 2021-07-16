@@ -28,14 +28,13 @@ class SCoordNet(nn.Module):
         resnet = models.resnet152()
         modules = list(resnet.children())
         self.convs = nn.Sequential(*modules[:8])
-        self.mlps = {
+        self.mlps = nn.ModuleDict({
             "fc1": nn.Linear(208, 64),
             "fc2": nn.Linear(64, 64),
             "fc3": nn.Linear(64, 32),
             "z": nn.Linear(32, 3),
             "v": nn.Linear(32, 1)
-        }
-        self.mlps = nn.ModuleDict(self.mlps)
+        })
 
     def forward(self, x):
         feats = self.convs(x)
@@ -65,44 +64,50 @@ class OFlowNet(nn.Module):
                                padding=(3, 3),
                                bias=False)
 
-        self.encoder = {
+        self.encoder = nn.ModuleDict({
             "layer1": encoder[:3],
             "layer2": encoder[3:5],
             "layer3": encoder[5:6],
             "layer4": encoder[6:7],
             "layer5": encoder[7:8]
-        }
+        })
         self.upsample = nn.Upsample(scale_factor=2)
-        self.upconvs = {
-            "l5_up": nn.Conv2d(2048, 2048, 1),
-            "l4_up": nn.Conv2d(1024, 1024, 1),
-            "l3_up": nn.Conv2d(512, 512, 1),
-            "l2_up": nn.Conv2d(256, 256, 1),
-            "l1_up": nn.Conv2d(64, 64, 1),
-            "conv5_up": nn.Conv2d(2048 + 1024, 1024, 1, 1),
-            "conv4_up": nn.Conv2d(1024 + 512, 512, 1, 1),
-            "conv3_up": nn.Conv2d(512 + 256, 256, 1, 1),
-            "conv2_up": nn.Conv2d(256 + 64, 64, 1, 1),
-            "conv1_up": nn.Conv2d(64 + 64, n_channels, 1, 1)
-        }
-        self.mlps = {
+        self.upconvs = nn.ModuleDict({
+            "l5_up":
+            nn.Conv2d(2048, 2048, 1),
+            "l4_up":
+            nn.Conv2d(1024, 1024, 1),
+            "l3_up":
+            nn.Conv2d(512, 512, 1),
+            "l2_up":
+            nn.Conv2d(256, 256, 1),
+            "l1_up":
+            nn.Conv2d(64, 64, 1),
+            "conv5_up":
+            nn.Conv2d(2048 + 1024, 1024, 1, 1),
+            "conv4_up":
+            nn.Conv2d(1024 + 512, 512, 1, 1),
+            "conv3_up":
+            nn.Conv2d(512 + 256, 256, 1, 1),
+            "conv2_up":
+            nn.Conv2d(256 + 64, 64, 1, 1),
+            "conv1_up":
+            nn.Conv2d(64 + 64, n_channels, 1, 1)
+        })
+        self.mlps = nn.ModuleDict({
             "fc1": nn.Linear(208, 64),
             "fc2": nn.Linear(64, 64),
             "fc3": nn.Linear(64, 32),
             "out": nn.Linear(32, 1)
-        }
-        self.feat_extract = {
+        })
+        self.feat_extract = nn.ModuleDict({
             "l1": nn.Conv2d(n_channels, 64, 1, 1),
             # "l2": nn.Conv2d(64, 64, 1),
             "l3": nn.Conv2d(64, 32, 1, 1),
             "l4": nn.Conv2d(32, 1, 1),
             "out": nn.Linear(3328, 2048),
             'reshape': nn.Linear(1, 3)
-        }
-        self.feat_extract = nn.ModuleDict(self.feat_extract)
-        self.mlps = nn.ModuleDict(self.mlps)
-        self.upconvs = nn.ModuleDict(self.upconvs)
-        self.encoder = nn.ModuleDict(self.encoder)
+        })
         self.pool = nn.MaxPool2d(2)
         self.conv_img = nn.Conv2d(16, 64, 1, 1)
         self.softmax = nn.Softmax(dim=1)
@@ -169,15 +174,14 @@ class PoseEstimator(nn.Module):
         self.activation = nn.SELU()
         self.unflatten = nn.Unflatten(2, (32, 64))
         self.conv = nn.Conv2d(3, 1, 3, 1)
-        self.mlps = {
+        self.mlps = nn.ModuleDict({
             "fc1": nn.Linear(1860, 1024),
             "fc2": nn.Linear(1024, 512),
             "fc3": nn.Linear(512, 512),
             "fc4": nn.Linear(512, 128),
             "rotation": nn.Linear(128, 9),
             "translation": nn.Linear(128, 3)
-        }
-        self.mlps = nn.ModuleDict(self.mlps)
+        })
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
