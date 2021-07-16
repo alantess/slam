@@ -128,7 +128,8 @@ def train_pose(model,
                 p.grad = None
 
             with autocast():
-                pose, _, _ = model(s, s_, mean, covar)
+                pose = model(s, s_)
+                # pose, _, _ = model(s, s_, mean, covar)
                 # mean = mean.detach()
                 # covar = covar.detach()
                 # loss = loss_fn(pose, Rt)
@@ -150,7 +151,8 @@ def train_pose(model,
                 Rt = Rt.to(device, dtype=torch.float32)
 
                 with autocast():
-                    pose, _, _ = model(s, s_, v_mean, v_covar)
+                    pose = model(s, s_)
+                    # pose, _, _ = model(s, s_, v_mean, v_covar)
                     # v_mean = v_mean.detach()
                     # v_covar = v_covar.detach()
                     # v_loss = loss_fn(pose, Rt)

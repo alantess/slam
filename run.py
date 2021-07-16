@@ -79,7 +79,8 @@ if __name__ == '__main__':
     ])
 
     depth_model = DepthNet(model_name='depthnet152.pt')
-    pose_model = KFNet()
+    pose_model = PoseNet()
+    # pose_model = KFNet()
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
