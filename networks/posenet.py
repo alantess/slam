@@ -70,8 +70,8 @@ class PoseNet(nn.Module):
         self.encoder = Encoder()
         self.mlps = nn.ModuleDict({
             "fc1": nn.Linear(208, 256),
-            "fc2": nn.Linear(256, 256),
-            "fc3": nn.Linear(256, 512),
+            "fc2": nn.Linear(256, 512),
+            "fc3": nn.Linear(512, 512),
         })
         self.decode_fc = nn.Linear(256, 128)
         self.rot_fc = nn.Linear(128, 9)
@@ -92,6 +92,14 @@ class PoseNet(nn.Module):
         x = torch.cat([r, t], dim=2)
 
         return x
+
+    def save(self):
+        if not os.path.exists(self.chkpt_dir):
+            os.mkdir(self.chkpt_dir)
+        torch.save(self.state_dict(), self.file)
+
+    def load(self):
+        self.load_state_dict(torch.load(self.file))
 
 
 # if __name__ == '__main__':
