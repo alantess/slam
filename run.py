@@ -94,8 +94,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
-                              pin_memory=PIN_MEM,
-                              shuffle=True)
+                              pin_memory=PIN_MEM)
     val_loader = DataLoader(valset,
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,

@@ -37,6 +37,13 @@ class SCoordNet(nn.Module):
         })
 
     def forward(self, x):
+        """
+        The Measurement system of the Kalman filter
+        Args:
+        Image at time T
+        Returns:
+           State observation (Zt)  and Measurement Noise Covariance (Vt) 
+        """
         feats = self.convs(x)
         feats = feats.flatten(2)
         for i in self.mlps:
