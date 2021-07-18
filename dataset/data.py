@@ -107,3 +107,4 @@ class KittiSet(Dataset):
 #     dataset = KittiSet(path, preprocess)
 #     loader = DataLoader(dataset, batch_size=1)
 #     s, s_, d, rt, k, k_inv = next(iter(loader))
+# print(rt)

@@ -121,13 +121,17 @@ def train_pose(model,
             s = s.to(device)
             s_ = s_.to(device)
             Rt = Rt.to(device, dtype=torch.float32)
+            rot = Rt[:, :, :3]
+            translation = Rt[:, :, 3:]
 
             for p in model.parameters():
                 p.grad = None
 
             with autocast():
-                pose = model(s, s_)
-                loss = loss_fn(pose, Rt)
+                pred_r, pred_t = model(s, s_)
+                rot_loss = loss_fn(pred_r, rot)
+                transl_loss = loss_fn(pred_t, translation)
+                loss = rot_loss + transl_loss
                 # err1, err2 = compute_pose_loss(pose, Rt)
                 # loss = (err1 * w1) + (err2 * w2)
             scaler.scale(loss).backward()
@@ -144,10 +148,15 @@ def train_pose(model,
                 s = s.to(device, dtype=torch.float32)
                 s_ = s_.to(device, dtype=torch.float32)
                 Rt = Rt.to(device, dtype=torch.float32)
+                rot = Rt[:, :, :3]
+                translation = Rt[:, :, 3:]
 
                 with autocast():
-                    pose = model(s, s_)
-                    v_loss = loss_fn(pose, Rt)
+                    v_rot, v_transl = model(s, s_)
+                    rot_vloss = loss_fn(v_rot, rot)
+                    transl_vloss = loss_fn(v_transl, translation)
+                    v_loss = rot_vloss + transl_vloss
+
                     # v_err1, v_err2 = compute_pose_loss(pose, Rt)
                     # v_loss = (v_err1 * w1) + (v_err2 * w2)
                 val_loss += v_loss.item()

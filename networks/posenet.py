@@ -149,8 +149,10 @@ class PoseNet(nn.Module):
         t = (self.transl_fc(x)).unsqueeze(2)
         x = torch.cat([r, t], dim=2)
         x -= prev_pose
+        rot = x[:, :, :3]
+        translation = x[:, :, 3:]
 
-        return x
+        return rot, translation
 
     def save(self):
         if not os.path.exists(self.chkpt_dir):
@@ -166,12 +168,13 @@ class PoseNet(nn.Module):
 #     torch.manual_seed(55)
 #     ex = torch.randn(1, 3, 256, 832, device=device)
 #     posenet = PoseNet().to(device)
-#     x = posenet(ex, ex)
+#     x, y = posenet(ex, ex)
 #     print(x.size())
 #     print(x)
-
-#     model = KFNet().to(device)
-#     y = model(ex, ex)
-
-#     print(y.size())
 #     print(y)
+
+# model = KFNet().to(device)
+# y = model(ex, ex)
+
+# print(y.size())
+# print(y)
