@@ -1,4 +1,5 @@
 import torch
+import math
 from torch import nn
 from torchvision import models
 
@@ -184,25 +185,28 @@ class OFlowNet(nn.Module):
 class PoseEstimator(nn.Module):
     def __init__(self):
         super(PoseEstimator, self).__init__()
-        self.activation = nn.SELU()
-        self.unflatten = nn.Unflatten(2, (32, 64))
-        self.conv = nn.Conv2d(3, 1, 3, 1)
+        self.activation = nn.LeakyReLU()
+        self.gru = nn.GRU(64, 128, num_layers=6, batch_first=True)
+
         self.mlps = nn.ModuleDict({
-            "fc1": nn.Linear(1860, 1024),
-            "fc2": nn.Linear(1024, 512),
-            "fc3": nn.Linear(512, 512),
-            "fc4": nn.Linear(512, 128),
+            "fc1": nn.Linear(2048, 2048),
+            "fc2": nn.Linear(2048, 1024),
+            "fc3": nn.Linear(1024, 512),
+            "fc4": nn.Linear(512, 256),
+            "fc5": nn.Linear(256, 128),
+            "fc6": nn.Linear(128, 64),
             "rotation": nn.Linear(128, 9),
             "translation": nn.Linear(128, 3)
         })
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
-        x = self.unflatten(x)
-        x = self.activation(self.conv(x))
-        x = x.flatten(1)
+
         for i in self.mlps:
             if i == 'rotation':
+                x, h0 = self.gru(x)
+                # x = torch.linalg.norm(x, axis=1)
+                x = x.mean(1)
                 rot = (self.mlps[i](x)).view(-1, 3, 3)
             elif i == 'translation':
                 t = (self.mlps[i](x)).unsqueeze(2)

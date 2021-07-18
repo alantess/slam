@@ -47,7 +47,7 @@ if __name__ == '__main__':
     device = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    SEED = 99
+    SEED = 97
     torch.manual_seed(SEED)
     BATCH_SIZE = args.batch
     PIN_MEM = True
@@ -84,9 +84,9 @@ if __name__ == '__main__':
 
     print('=> Setting adam solver')
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
-    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-5)
+    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-6)
 
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
@@ -101,29 +101,37 @@ if __name__ == '__main__':
                             num_workers=NUM_WORKERS,
                             pin_memory=PIN_MEM)
 
-    # pose_model.load()
-    # pose_model.eval()
-    # s, s_, _, rt, k, _ = next(iter(val_loader))
-    # s = s.to(dtype=torch.float32)
-    # s = k.to(dtype=torch.float32)
-    # p, _, _ = pose_model(s, s_)
-    # loss = loss_fn(p, rt)
-    # print(p[0])
-    # print(rt[0])
-    # print(loss.item())
+    import math
+    rad = math.pi / 180
+    mean = valset.mean
+    std = valset.std
+    pose_model.load()
+    pose_model.eval()
+    s, s_, _, rt, k, _ = next(iter(val_loader))
+    s = s.to(dtype=torch.float32)
+    s_ = s_.to(dtype=torch.float32)
+    p = pose_model(s, s_)
+    loss = loss_fn(p, rt)
+    p = p.detach()
+    p = (p * std) + mean
+    # p *= rad
+    rt = (rt * std) + mean
+    print(p[0])
+    print(rt[0])
+    print(loss.item())
 
-    if args.mode == 'test':
-        test_pose(pose_model, val_loader)
-        test_depth(depth_model, val_loader)
-        display_depth(model, preprocess, device, args.video, args.img_height,
-                      args.img_width)
+    # if args.mode == 'test':
+    #     test_pose(pose_model, val_loader)
+    #     test_depth(depth_model, val_loader)
+    #     display_depth(model, preprocess, device, args.video, args.img_height,
+    #                   args.img_width)
 
-    elif args.mode == 'pose':
-        train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
-                   device, EPOCHS)
+    # elif args.mode == 'pose':
+    #     train_pose(pose_model, train_loader, val_loader, pose_optim, loss_fn,
+    #                device, EPOCHS)
 
-    elif args.mode == 'depth':
-        train_depth(depth_model, train_loader, val_loader, depth_optim,
-                    loss_fn, device, EPOCHS)
-    else:
-        print("Please choose an available mode: [test, pose, depth]")
+    # elif args.mode == 'depth':
+    #     train_depth(depth_model, train_loader, val_loader, depth_optim,
+    #                 loss_fn, device, EPOCHS)
+    # else:
+    #     print("Please choose an available mode: [test, pose, depth]")

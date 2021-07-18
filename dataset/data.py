@@ -27,6 +27,7 @@ class KittiSet(Dataset):
 
     def _crawl_folders(self):
         seq_set = []
+        rot_mean, rot_std, t_mean, t_std = 0, 0, 0, 0
         for folder in self.folders:
             imgs = sorted(glob.glob(os.path.join(folder, "*.jpg")))
             depth = sorted(glob.glob(os.path.join(folder, "*.png")))
@@ -52,13 +53,20 @@ class KittiSet(Dataset):
                     "intrinsic": k,
                 }
                 x = sample['poses']
-                self.mean += (x - x.min())
-                self.std += (x.max() - x.min())
+                rot_mean += (x[:, :3] - x[:, :3].min())
+                rot_std += (x[:, :3].max() - x[:, :3].min())
+                t_mean += (x[:, 3:] - x[:, 3:].min())
+                t_std += (x[:, 3:].max() - x[:, 3:].min())
+
                 seq_set.append(sample)
 
         self.samples = seq_set
+        # Normalization Settings
+        t_mean[1, :] *= 5
+        self.mean = np.concatenate([rot_mean, t_mean], axis=1)
+        self.std = np.mean(rot_std - t_std)
         self.mean /= int(len(self.samples))
-        self.std /= int(len(self.samples))
+        self.std /= (int(len(self.samples)))
 
     def __len__(self):
         return len(self.samples)
@@ -80,7 +88,6 @@ class KittiSet(Dataset):
             depth = self.transforms(depth)
             depth = grayscale(depth)
             Rt = torch.from_numpy(Rt)
-            # Rt = (Rt - Rt.min()) / (Rt.max() - Rt.min())
             Rt = (Rt - self.mean) / self.std
             k = torch.from_numpy(k)
             k_inv = torch.from_numpy(k_inv)
