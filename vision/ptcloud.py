@@ -61,19 +61,22 @@ class PointCloud(object):
 
     def add_points(self, d_img):
         img = self._get_image(d_img)
+        self.geometry.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1,
+                                                              max_nn=30))
+
         self.geometry.points = self.geometry.create_from_depth_image(
             depth=img, intrinsic=self.ph_cam).points
-
         self.geometry.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0],
                                  [0, 0, 0, 1]])
         self.vis.add_geometry(self.geometry)
-        if self.prev is not None:
-            self.vis.add_geometry(self.prev)
+        # Change view point
         if self.time_step >= 1:
             ctr = self.vis.get_view_control()
             ctr.set_lookat([0, 0, 0])
             ctr.rotate(0.0, 300.0)
             ctr.set_zoom(1.0)
-        self.vis.poll_events()
-        self.vis.update_renderer()
-        self.prev = self.geometry
+        if self.time_step % 5:
+            self.vis.poll_events()
+            self.vis.update_renderer()
+            self.prev = self.geometry

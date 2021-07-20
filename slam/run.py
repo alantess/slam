@@ -1,4 +1,5 @@
 import sys
+
 sys.path.insert(0, "..")
 import torch
 from torchvision import transforms
@@ -10,7 +11,6 @@ from dataset.data import *
 from vision.depth import *
 from vision.vision import *
 from support.test import *
-from networks.posenet import *
 from networks.depthnet import DepthNet
 
 if __name__ == '__main__':
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mode',
         type=str,
-        default='pose',
+        default='train',
         help='Trains Models or Test the models. Args: [pose,depth,test]')
     parser.add_argument(
         '--video',
@@ -59,20 +59,13 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
 
-    if args.mode == 'pose':
-        preprocess = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize((args.img_height, args.img_width)),
-            transforms.Normalize(mean=[0.43216, 0.394666, 0.37645],
-                                 std=[0.22803, 0.22145, 0.216989])
-        ])
-    else:
-        preprocess = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize((args.img_height, args.img_width)),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
+    preprocess = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.RandomAdjustSharpness(0),
+        transforms.Resize((args.img_height, args.img_width)),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
 
     inv_preprocess = transforms.Compose([
         transforms.Normalize(mean=[0., 0., 0.],
@@ -80,11 +73,11 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
     ])
 
-    depth_model = DepthNet(model_name='depthnet152.pt')
+    print('=> Setting up network')
 
-    print('=> Setting adam solver')
+    depth_model = DepthNet()
+
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
-    pose_optim = torch.optim.Adam(pose_model.parameters(), lr=1e-6)
 
     loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
@@ -102,7 +95,6 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     if args.mode == 'test':
-        test_pose(pose_model, val_loader)
         test_depth(depth_model, val_loader)
         display_depth(model, preprocess, device, args.video, args.img_height,
                       args.img_width)
@@ -111,4 +103,4 @@ if __name__ == '__main__':
         train_depth(depth_model, train_loader, val_loader, depth_optim,
                     loss_fn, device, EPOCHS)
     else:
-        print("Please choose an available mode: [test, pose, depth]")
+        print("Please choose an available mode: [train, test]")

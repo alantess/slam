@@ -10,7 +10,7 @@ class Encoder(nn.Module):
 
     def __init__(self):
         super(Encoder, self).__init__()
-        resnet = models.resnet152(True)
+        resnet = models.resnet152()
         modules = list(resnet.children())
         self.encoder = nn.Sequential(*modules[:8])
 

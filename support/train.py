@@ -15,7 +15,7 @@ def train_depth(model,
                 epochs,
                 load_model=False):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e6:1f}")
+    print(f"-----MODEL PARAMS-----\nPOSE PARAMS: {params/1e6:.1f}M")
 
     scaler = GradScaler()
     best_score = np.inf
@@ -72,102 +72,6 @@ def train_depth(model,
             model.save()
             # Save epoch, optimizer, and loss
             print("MODEL SAVED.")
-
-        print(
-            f"Epoch #{epoch} Loss:\n(Training): {total_loss:.5f} \t (Validation): {val_loss:.5f}  "
-        )
-
-
-# Pose
-def train_pose(model,
-               train_loader,
-               val_loader,
-               optimizer,
-               loss_fn,
-               device,
-               epochs,
-               load_model=False):
-    """
-    Trains both networks simultaneously
-    :param model: Input model 
-    :param train_loader: Training Set  
-    :param val_loader: Validation Set 
-    :param optimizer: Optimizer  
-    :param loss_fn: Loss function 
-    :param device: GPU or CPU 
-    :param epochs: Training iteration 
-    :param load_model: Loads saved model 
-    :return: None 
-    """
-    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"------MODEL PARAMS------\nPOSE PARAMS: {params/1e6:.1f}M")
-    scaler = GradScaler()
-    best_score = np.inf
-    w1, w2, w3 = 1, 1, 1
-
-    if load_model:
-        model.load()
-        print('MODEL LOADED.')
-
-    model.to(device)
-
-    print("---- Training Pose ----")
-    for epoch in range(epochs):
-        loop = tqdm(train_loader)
-        total_loss = 0
-        val_loss = 0
-        # Training Loop
-        for i, (s, s_, _, Rt, _, _) in enumerate(loop):
-            s = s.to(device)
-            s_ = s_.to(device)
-            Rt = Rt.to(device, dtype=torch.float32)
-            rot = Rt[:, :, :3]
-            translation = Rt[:, :, 3:]
-
-            for p in model.parameters():
-                p.grad = None
-
-            with autocast():
-                pred_r, pred_t = model(s, s_)
-                rot_loss = loss_fn(pred_r, rot)
-                transl_loss = loss_fn(pred_t, translation)
-                loss = rot_loss + transl_loss
-                # err1, err2 = compute_pose_loss(pose, Rt)
-                # loss = (err1 * w1) + (err2 * w2)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-
-            total_loss += loss.item()
-            loop.set_postfix(loss=loss.item())
-        # Validation Loop
-        print('Validation')
-        val_loop = tqdm(val_loader)
-        with torch.no_grad():
-            for j, (s, s_, _, Rt, _, _) in enumerate(val_loop):
-                s = s.to(device, dtype=torch.float32)
-                s_ = s_.to(device, dtype=torch.float32)
-                Rt = Rt.to(device, dtype=torch.float32)
-                rot = Rt[:, :, :3]
-                translation = Rt[:, :, 3:]
-
-                with autocast():
-                    v_rot, v_transl = model(s, s_)
-                    rot_vloss = loss_fn(v_rot, rot)
-                    transl_vloss = loss_fn(v_transl, translation)
-                    v_loss = rot_vloss + transl_vloss
-
-                    # v_err1, v_err2 = compute_pose_loss(pose, Rt)
-                    # v_loss = (v_err1 * w1) + (v_err2 * w2)
-                val_loss += v_loss.item()
-                val_loop.set_postfix(val_loss=v_loss.item())
-
-        # Save the model depending on performance
-        if val_loss < best_score:
-            best_score = val_loss
-            model.save()
-            # Save epoch, optimizer, and loss
-            print("\nMODEL SAVED.")
 
         print(
             f"Epoch #{epoch} Loss:\n(Training): {total_loss:.5f} \t (Validation): {val_loss:.5f}  "
