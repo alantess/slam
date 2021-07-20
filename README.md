@@ -7,17 +7,17 @@ Execute
 ---
 ```bash
    python run.py              # Trains the models
-   python run.py --test True  # Displays the Model Perfomance
 ```
 
 <p>The run.py accepts the following:</p>
 
 ```bash
 optional arguments:
+  --kitti-dir             Directory for dataset [Kitti Visual Odometry Datasets]
   --img-height            Sets the image height
   --img-width             Sets the image width
   --batch                 Sets the batch size 
-  --test                  Displays Model Performance 
+  --mode                  Trains needed model / Display Performance
   --video                 Directory or Link (mp4) to driving footage              
 ```
 
