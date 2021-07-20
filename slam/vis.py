@@ -2,7 +2,6 @@ import sys
 
 sys.path.insert(0, "..")
 from vision.ptcloud import *
-from support.camera import CameraProjector
 
 # To be deleted
 from dataset.data import *
@@ -21,7 +20,7 @@ s, s_, depth2, rt, k, k_inv = next(iter(loader))
 
 
 def visualize(pt):
-    for i, (_, _, d, _, _, _) in enumerate(loader):
+    for i, (_, img, d, _, _, _) in enumerate(loader):
 
         pt.run(d)
 
@@ -32,4 +31,6 @@ if __name__ == '__main__':
     pt = PointCloud(k[0])
     pt.init()
     visualize(pt)
-    d_img = depth2[0].squeeze(0).numpy()
+    rt = (rt[0] * dataset.std) + dataset.mean
+    transl = rt[:, 3:]
+    print(rt)

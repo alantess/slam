@@ -20,6 +20,7 @@ class PointCloud(object):
         self.height = height
         self.width = width
         self.bg_color = background_color
+        self.prev = None
 
     def init(self):
 
@@ -32,6 +33,8 @@ class PointCloud(object):
         opt.background_color = self.bg_color
 
         self.geometry = o3d.geometry.PointCloud()
+
+        # self.vis.add_geometry(self.geometry)
         # Set up intrinsics matrix
         fx = self.k[0, 0]
         fy = self.k[1, 1]
@@ -48,22 +51,29 @@ class PointCloud(object):
     def __del__(self):
         self.vis.destroy_window()
 
-    def run(self, xyz):
-        self.add_points(xyz)
-        self.vis.run()
+    def run(self, depth):
+        self.add_points(depth)
+        self.time_step += 1
 
     def _get_image(self, d_img):
-        return o3d.geometry.Image(d_img[0].squeeze(0).numpy())
+        depth = o3d.geometry.Image(d_img[0].squeeze(0).numpy())
+        return depth
 
     def add_points(self, d_img):
         img = self._get_image(d_img)
-        pcd = o3d.geometry.PointCloud.create_from_depth_image(
-            depth=img, intrinsic=self.ph_cam)
+        self.geometry.points = self.geometry.create_from_depth_image(
+            depth=img, intrinsic=self.ph_cam).points
 
-        self.geometry.points = pcd.points
+        self.geometry.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0],
+                                 [0, 0, 0, 1]])
         self.vis.add_geometry(self.geometry)
-        ctr = self.vis.get_view_control()
-        ctr.rotate(980.0, 300.0)
-        ctr.set_zoom(1.0)
+        if self.prev is not None:
+            self.vis.add_geometry(self.prev)
+        if self.time_step >= 1:
+            ctr = self.vis.get_view_control()
+            ctr.set_lookat([0, 0, 0])
+            ctr.rotate(0.0, 300.0)
+            ctr.set_zoom(1.0)
         self.vis.poll_events()
         self.vis.update_renderer()
+        self.prev = self.geometry
