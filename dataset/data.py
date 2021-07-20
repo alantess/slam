@@ -76,7 +76,7 @@ class KittiSet(Dataset):
 
         s = cv.imread(sample["frame"])  #HxWxC
         s_ = cv.imread(sample["next_frame"])
-        depth = cv.imread(sample["depth"])
+        depth = cv.imread(sample["depth"]).astype(np.float32)
         Rt = sample["poses"]
         k = sample["intrinsic"]
         k_inv = np.linalg.inv(k)
