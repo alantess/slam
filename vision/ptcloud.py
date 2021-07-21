@@ -51,25 +51,19 @@ class PointCloud(object):
     def __del__(self):
         self.vis.destroy_window()
 
-    def run(self, depth):
-        self.add_points(depth)
+    def run(self, depth_points):
+        self.add_points(depth_points)
         self.time_step += 1
 
     def _get_image(self, d_img):
         depth = o3d.geometry.Image(d_img[0].squeeze(0).numpy())
         return depth
 
-    def add_points(self, d_img):
-        img = self._get_image(d_img)
-        self.geometry.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1,
-                                                              max_nn=30))
+    def add_points(self, xyz):
+        self.geometry.points = o3d.utility.Vector3dVector(xyz)
 
-        self.geometry.points = self.geometry.create_from_depth_image(
-            depth=img, intrinsic=self.ph_cam).points
-        self.geometry.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0],
-                                 [0, 0, 0, 1]])
         self.vis.add_geometry(self.geometry)
+        # self.vis.update_geometry(self.geometry)
         # Change view point
         if self.time_step >= 1:
             ctr = self.vis.get_view_control()

@@ -6,6 +6,7 @@ from networks.depthnet import DepthNet
 from dataset.data import *
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from support.compute import CameraProjector
 
 preprocess = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
@@ -26,11 +27,16 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device(
     'cpu')
 
 
-def visualize(pt, model=None):
+def visualize(pt, camera, model=None):
     print("Running PointCloud...")
     if model:
         model.to(device)
-    for i, (img, tgt, depth, _, _, _) in enumerate(loader):
+
+    t = 0
+    for i, (img, tgt, depth, _, k, _) in enumerate(loader):
+        k = k.to(device, dtype=torch.float32)
+        depth = depth.to(device, dtype=torch.float32)
+
         if model:
             img = img.to(device, dtype=torch.float32)
             tgt = tgt.to(device, dtype=torch.float32)
@@ -38,16 +44,23 @@ def visualize(pt, model=None):
                 with torch.cuda.amp.autocast():
                     pred = model(img, tgt)
                 depth = pred.detach().to(dtype=torch.float32).cpu()
+        camera.K = k[0].float()
+        xyz = camera.pixel_to_cam(depth)
+        xyz = xyz.cpu().numpy()
 
-        pt.run(depth)
+        pt.run(xyz)
+        t += 1
+        if t > 10:
+            break
 
 
 def main():
-    model = DepthNet(model_name="depthnet152.pt")
-    model.load()
+    # model = DepthNet()
+    # model.load()
+    proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt, model)
+    visualize(pt, proj, model=None)
 
 
 if __name__ == '__main__':

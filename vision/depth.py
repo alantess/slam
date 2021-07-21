@@ -25,11 +25,17 @@ def display_depth(model,
                                 cv.VideoWriter_fourcc(*'MJPG'), 60, video_size)
     model.load()
     model.to(device)
+    prev_frame = torch.zeros((1, 3, height, width),
+                             device=device,
+                             dtype=torch.float32)
+
     frame_tensor = torch.zeros((1, 3, height, width),
                                device=device,
                                dtype=torch.float32)
 
     cap = cv.VideoCapture(video)
+
+    ret, frame = cap.read()
     while cap.isOpened():
         ret, frame = cap.read()
         v_frame = frame

@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     depth_model = DepthNet()
 
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-5)
+    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=9e-5)
 
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
