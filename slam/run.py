@@ -77,9 +77,9 @@ if __name__ == '__main__':
 
     depth_model = DepthNet()
 
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
+    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-5)
 
-    loss_fn = torch.nn.SmoothL1Loss()
+    loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
@@ -95,10 +95,10 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     if args.mode == 'test':
+        show_depth_example(depth_model, device, val_loader)
+        visualize_depth(depth_model, args.video, preprocess, device,
+                        args.img_height, args.img_width)
         test_depth(depth_model, val_loader)
-        display_depth(model, preprocess, device, args.video, args.img_height,
-                      args.img_width)
-
     elif args.mode == 'train':
         train_depth(depth_model, train_loader, val_loader, depth_optim,
                     loss_fn, device, EPOCHS)

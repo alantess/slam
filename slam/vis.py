@@ -2,9 +2,9 @@ import sys
 
 sys.path.insert(0, "..")
 from vision.ptcloud import *
-
-# To be deleted
+from networks.depthnet import DepthNet
 from dataset.data import *
+from torchvision import transforms
 from torch.utils.data import DataLoader
 
 preprocess = torchvision.transforms.Compose([
@@ -12,25 +12,43 @@ preprocess = torchvision.transforms.Compose([
     torchvision.transforms.Normalize(mean=[0.43216, 0.394666, 0.37645],
                                      std=[0.22803, 0.22145, 0.216989])
 ])
+inv_preprocess = transforms.Compose([
+    transforms.Normalize(mean=[0., 0., 0.],
+                         std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
+    transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
+])
 path = "/media/alan/seagate/datasets/kitti/cpp/"
 dataset = KittiSet(path, preprocess)
 loader = DataLoader(dataset, batch_size=1)
 s, s_, depth, rt, k, k_inv = next(iter(loader))
-s, s_, depth2, rt, k, k_inv = next(iter(loader))
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device(
+    'cpu')
 
 
-def visualize(pt):
-    for i, (_, img, d, _, _, _) in enumerate(loader):
+def visualize(pt, model=None):
+    print("Running PointCloud...")
+    if model:
+        model.to(device)
+    for i, (img, tgt, depth, _, _, _) in enumerate(loader):
+        if model:
+            img = img.to(device, dtype=torch.float32)
+            tgt = tgt.to(device, dtype=torch.float32)
+            with torch.no_grad():
+                with torch.cuda.amp.autocast():
+                    pred = model(img, tgt)
+                depth = pred.detach().to(dtype=torch.float32).cpu()
 
-        pt.run(d)
+        pt.run(depth)
 
 
-import cv2 as cv
-if __name__ == '__main__':
-
+def main():
+    model = DepthNet(model_name="depthnet152.pt")
+    model.load()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt)
-    rt = (rt[0] * dataset.std) + dataset.mean
-    transl = rt[:, 3:]
-    print(rt)
+    visualize(pt, model)
+
+
+if __name__ == '__main__':
+    main()
