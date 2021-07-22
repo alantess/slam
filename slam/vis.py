@@ -32,29 +32,29 @@ def visualize(pt, camera, model=None):
     if model:
         model.to(device)
 
-    t = 0
     for i, (img, tgt, depth, _, k, _) in enumerate(loader):
-        k = k.to(device, dtype=torch.float64)
-        depth = depth.to(device, dtype=torch.float64)
+        k = k.to(device)
+        # depth = depth.to(device, dtype=torch.float64)
 
         if model:
-            img = img.to(device, dtype=torch.float32)
-            tgt = tgt.to(device, dtype=torch.float32)
+            img = img.to(device)
+            tgt = tgt.to(device)
             with torch.no_grad():
-                with torch.cuda.amp.autocast():
-                    pred = model(img, tgt)
+                # with torch.cuda.amp.autocast():
+                pred = model(img, tgt)
                 depth = pred.detach().to(dtype=torch.float32)
-        camera.K = k[0]
-        xyz = camera.pixel_to_cam(depth)
-        xyz = xyz.cpu().numpy()
+        # camera.K = k[0].to(dtype=torch.float64)
+        # xyz = camera.pixel_to_cam(depth)
+        # xyz = xyz.cpu().numpy()
+        xyz = depth.cpu()
 
+        print(xyz.dtype)
         pt.run(xyz)
-        t += 1
 
 
 def main():
-    # model = DepthNet()
-    # model.load()
+    model = DepthNet()
+    model.load()
     proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()

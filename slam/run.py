@@ -59,7 +59,6 @@ if __name__ == '__main__':
 
     preprocess = transforms.Compose([
         transforms.ToTensor(),
-        transforms.RandomAdjustSharpness(0),
         transforms.Resize((args.img_height, args.img_width)),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
@@ -73,7 +72,7 @@ if __name__ == '__main__':
 
     print('=> Setting up network')
 
-    depth_model = DepthNet(model_name='depthnet152.pt')
+    depth_model = DepthNet(model_name='modeldpth.pt')
 
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
@@ -86,7 +85,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
-                              pin_memory=PIN_MEM)
+                              pin_memory=PIN_MEM,
+                              shuffle=True)
     val_loader = DataLoader(valset,
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
