@@ -32,9 +32,9 @@ def train_depth(model,
         val_loss = 0
         # Training Loop
         for i, (img, tgt, depth, _, K, _) in enumerate(loop):
-            img = img.to(device, dtype=torch.float32)
-            tgt = tgt.to(device, dtype=torch.float32)
-            depth = depth.to(device, dtype=torch.float32)
+            img = img.to(device, dtype=torch.float64)
+            tgt = tgt.to(device, dtype=torch.float64)
+            depth = depth.to(device, dtype=torch.float64)
 
             for p in model.parameters():
                 p.grad = None
@@ -55,8 +55,8 @@ def train_depth(model,
         val_loop = tqdm(val_loader)
         with torch.no_grad():
             for j, (img, tgt, depth, _, _, _) in enumerate(val_loop):
-                img = img.to(device, dtype=torch.float32)
-                tgt = tgt.to(device, dtype=torch.float32)
+                img = img.to(device, dtype=torch.float64)
+                tgt = tgt.to(device, dtype=torch.float64)
                 depth = depth.to(device)
 
                 with autocast():

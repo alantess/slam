@@ -12,7 +12,7 @@ def visualize_depth(model,
                     device,
                     height,
                     width,
-                    inv_depth=True,
+                    inv_depth=False,
                     save_video=False):
 
     gc.collect()

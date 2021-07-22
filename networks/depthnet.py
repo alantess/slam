@@ -8,7 +8,7 @@ class DepthNet(nn.Module):
     def __init__(self,
                  n_channels=1,
                  chkpt_dir="model_checkpoints",
-                 model_name="depthnet.pt"):
+                 model_name="depthnet152.pt"):
         super(DepthNet, self).__init__()
         channels = [4096, 2048, 1024, 512, 256, 128]
         deconvs = {}

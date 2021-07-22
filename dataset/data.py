@@ -74,8 +74,8 @@ class KittiSet(Dataset):
     def __getitem__(self, idx):
         sample = self.samples[idx]
 
-        s = cv.imread(sample["frame"]).astype(np.float32)  #HxWxC
-        s_ = cv.imread(sample["next_frame"]).astype(np.float32)
+        s = cv.imread(sample["frame"])  #HxWxC
+        s_ = cv.imread(sample["next_frame"])
         depth = cv.imread(sample["depth"])
         Rt = sample["poses"]
         k = sample["intrinsic"]
@@ -86,7 +86,7 @@ class KittiSet(Dataset):
             s = self.transforms(s)
             s_ = self.transforms(s_)
             depth = self.transforms(depth)
-            depth = grayscale(depth).clamp(-2, 2)
+            depth = grayscale(depth)
             Rt = torch.from_numpy(Rt)
             Rt = (Rt - self.mean) / self.std
             k = torch.from_numpy(k)

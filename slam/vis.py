@@ -34,8 +34,8 @@ def visualize(pt, camera, model=None):
 
     t = 0
     for i, (img, tgt, depth, _, k, _) in enumerate(loader):
-        k = k.to(device, dtype=torch.float32)
-        depth = depth.to(device, dtype=torch.float32)
+        k = k.to(device, dtype=torch.float64)
+        depth = depth.to(device, dtype=torch.float64)
 
         if model:
             img = img.to(device, dtype=torch.float32)
@@ -43,15 +43,13 @@ def visualize(pt, camera, model=None):
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
                     pred = model(img, tgt)
-                depth = pred.detach().to(dtype=torch.float32).cpu()
-        camera.K = k[0].float()
+                depth = pred.detach().to(dtype=torch.float32)
+        camera.K = k[0]
         xyz = camera.pixel_to_cam(depth)
         xyz = xyz.cpu().numpy()
 
         pt.run(xyz)
         t += 1
-        if t > 10:
-            break
 
 
 def main():
@@ -60,7 +58,7 @@ def main():
     proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt, proj, model=None)
+    visualize(pt, proj)
 
 
 if __name__ == '__main__':

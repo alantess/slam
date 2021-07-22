@@ -6,9 +6,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import argparse
 from support.train import *
-from vision.visuals import *
 from dataset.data import *
-from vision.depth import *
 from vision.vision import *
 from support.test import *
 from networks.depthnet import DepthNet
@@ -75,11 +73,11 @@ if __name__ == '__main__':
 
     print('=> Setting up network')
 
-    depth_model = DepthNet()
+    depth_model = DepthNet(model_name='depthnet152.pt')
 
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=9e-5)
+    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
