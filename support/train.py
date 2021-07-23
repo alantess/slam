@@ -32,21 +32,23 @@ def train_depth(model,
         val_loss = 0
         # Training Loop
         for i, (img, tgt, depth, _, K, _) in enumerate(loop):
-            img = img.to(device, dtype=torch.float64)
-            tgt = tgt.to(device, dtype=torch.float64)
-            depth = depth.to(device, dtype=torch.float64)
+            img = img.to(device)
+            tgt = tgt.to(device)
+            depth = depth.to(device)
 
             for p in model.parameters():
                 p.grad = None
             # Forward
-            with autocast():
-                pred_depth = model(img, tgt)  # Bx1xWXH
-                loss = loss_fn(pred_depth, depth)
+            # with autocast():
+            pred_depth = model(img, tgt)  # Bx1xWXH
+            loss = loss_fn(pred_depth, depth)
+            loss.backward()
+            optimizer.step()
 
             # Backwards
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            # scaler.scale(loss).backward()
+            # scaler.step(optimizer)
+            # scaler.update()
 
             total_loss += loss.item()
             loop.set_postfix(loss=loss.item())
@@ -55,13 +57,13 @@ def train_depth(model,
         val_loop = tqdm(val_loader)
         with torch.no_grad():
             for j, (img, tgt, depth, _, _, _) in enumerate(val_loop):
-                img = img.to(device, dtype=torch.float64)
-                tgt = tgt.to(device, dtype=torch.float64)
+                img = img.to(device)
+                tgt = tgt.to(device)
                 depth = depth.to(device)
 
-                with autocast():
-                    pred_depth = model(img, tgt)
-                    v_loss = loss_fn(pred_depth, depth)
+                # with autocast():
+                pred_depth = model(img, tgt)
+                v_loss = loss_fn(pred_depth, depth)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 
@@ -70,8 +72,8 @@ def train_depth(model,
             best_score = val_loss
             model.save()
             # Save epoch, optimizer, and loss
-            print("MODEL SAVED.")
+            print("--- MODEL SAVED ---")
 
         print(
-            f"Epoch #{epoch} Loss:\n(Training): {total_loss:.5f} \t (Validation): {val_loss:.5f}  "
+            f"\nEpoch #{epoch} Loss:\n(Training): {total_loss:.5f} \t (Validation): {val_loss:.5f}  "
         )

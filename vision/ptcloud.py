@@ -6,7 +6,7 @@ class PointCloud(object):
     def __init__(self,
                  k=None,
                  height=700,
-                 width=700,
+                 width=800,
                  model=None,
                  background_color=None,
                  device=None):
@@ -59,16 +59,23 @@ class PointCloud(object):
         depth = o3d.geometry.Image(d_img[0].squeeze(0).numpy())
         return depth
 
-    def add_points(self, xyz):
-        self.geometry.points = o3d.utility.Vector3dVector(xyz)
+    def add_points(self, xyz, use_image=True):
+        if use_image:
+            img = self._get_image(xyz)
+            self.geometry.points = self.geometry.create_from_depth_image(
+                depth=img, intrinsic=self.ph_cam).points
+
+            self.geometry.transform([[1, 0, 0, 0], [0, -1, 0, 0],
+                                     [0, 0, -1, 0], [0, 0, 0, 1]])
+        else:
+            self.geometry.points = o3d.utility.Vector3dVector(xyz)
 
         self.vis.add_geometry(self.geometry)
-        # self.vis.update_geometry(self.geometry)
         # Change view point
         if self.time_step >= 1:
             ctr = self.vis.get_view_control()
             ctr.set_lookat([0, 0, 0])
-            ctr.rotate(0.0, 300.0)
+            ctr.rotate(2.0, 300.0)
             ctr.set_zoom(1.0)
         if self.time_step % 5:
             self.vis.poll_events()
