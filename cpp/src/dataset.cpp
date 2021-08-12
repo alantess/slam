@@ -5,8 +5,11 @@
 constexpr auto kTrain = "train.txt";
 constexpr auto kVal = "val.txt";
 constexpr auto valSize = 2266;
+constexpr auto trainSize = 13510;
 constexpr auto num_val_folders = 9;
 constexpr auto num_train_folders = 67;
+unsigned int n_threads = std::thread::hardware_concurrency() / 2;
+
 std::mutex my_mutex;
 
 std::vector<std::string> folder_iter(const std::string &root,
@@ -34,10 +37,11 @@ std::vector<float> txtToTensor(std::string file) {
 }
 void get_files(std::vector<std::string> folders,
                std::vector<torch::Tensor> &poses, std::vector<cv::Mat> &imgs,
-               std::vector<cv::Mat> &depths, torch::Tensor &cams) {
+               std::vector<cv::Mat> &depths, std::vector<torch::Tensor> &cams) {
   // Slows down code dramatically
   // Negates segmenation faults
   std::lock_guard<std::mutex> g(my_mutex);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   int v_count = 0;
   std::string img_ext(".jpg");
   std::string depth_ext(".png");
@@ -47,17 +51,14 @@ void get_files(std::vector<std::string> folders,
       if (p.path().extension() == img_ext) {
         cv::Mat cv_image = cv::imread(p.path());
         imgs.push_back(cv_image);
-      }
-      if (p.path().extension() == depth_ext) {
+      } else if (p.path().extension() == depth_ext) {
         cv::Mat cv_depth = cv::imread(p.path());
         depths.push_back(cv_depth);
-      }
-      if (p.path().filename() == "cam.txt") {
+      } else if (p.path().filename() == "cam.txt") {
         auto input = txtToTensor(p.path());
-        cams[v_count] = torch::from_blob(input.data(), {3, 3});
-        v_count++;
-      }
-      if (p.path().filename() == "poses.txt") {
+        auto out = torch::from_blob(input.data(), {3, 3});
+        cams.push_back(out);
+      } else if (p.path().filename() == "poses.txt") {
         auto input = txtToTensor(p.path());
         auto len = (int)input.size() / 12;
         auto out = torch::from_blob(input.data(), {len, 3, 4});
@@ -69,39 +70,49 @@ void get_files(std::vector<std::string> folders,
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
                                                   bool train) {
-  torch::Tensor cams = torch::empty({num_val_folders, 3, 3});
   std::vector<torch::Tensor> poses;
+  std::vector<torch::Tensor> cams;
 
   std::vector<cv::Mat> imgs;
   std::vector<std::jthread> workers;
   std::vector<cv::Mat> depths;
 
-  unsigned int n_threads = std::thread::hardware_concurrency();
   auto file = train ? root + kTrain : root + kVal;
+  auto num_samples = train ? trainSize : valSize;
   auto folders = folder_iter(root, file);
   int prev = 0;
   int inc = folders.size() / n_threads;
   int j = inc;
 
+  auto depths_t = torch::empty({num_samples, 3, 300, 300}, torch::kFloat);
+  auto images = torch::empty({num_samples, 3, 300, 300}, torch::kFloat);
+
+  depths.reserve(num_samples);
+  imgs.reserve(num_samples);
+  poses.reserve((int)folders.size());
+  cams.reserve((int)folders.size());
+
   while (j <= n_threads) {
     std::vector<std::string> f_alloc(folders.begin() + prev,
                                      folders.begin() + j);
 
-    workers.push_back(std::jthread(get_files, f_alloc, std::ref(poses),
-                                   std::ref(imgs), std::ref(depths),
-                                   std::ref(cams)));
+    workers.emplace_back(std::jthread(get_files, f_alloc, std::ref(poses),
+                                      std::ref(imgs), std::ref(depths),
+                                      std::ref(cams)));
+
     prev = j;
     j += inc;
   }
   for (auto &w : workers) {
-    if (w.joinable()) w.join();
+    /* if (w.joinable()) w.join(); */
+    w.detach();
   }
 
-  auto depth_samples = (int)depths.size();
-  auto img_samples = (int)imgs.size();
-  std::cout << img_samples << "\n" << depth_samples;
-  auto depths_t = torch::empty({depth_samples, 3, 300, 300}, torch::kFloat);
-  auto images = torch::empty({img_samples, 3, 300, 300}, torch::kFloat);
+  imgs.shrink_to_fit();
+  depths.shrink_to_fit();
+  poses.shrink_to_fit();
+  cams.shrink_to_fit();
+
   return {images, depths_t};
 }
 
