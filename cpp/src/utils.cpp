@@ -12,7 +12,7 @@ cv::Mat utils::TensortoCV(torch::Tensor x) {
   return output.clone();
 }
 
-torch::Tensor utils::CVtoTensor(cv::Mat x, int kRows = 256, int kCols = 256) {
+torch::Tensor utils::CVtoTensor(cv::Mat x, int kRows, int kCols ) {
   cv::resize(x, x, cv::Size{kRows, kCols}, 0, 0, cv::INTER_LINEAR);
   cv::cvtColor(x, x, cv::COLOR_BGR2RGB);
   auto x_tensor = torch::from_blob(x.data, {kRows, kCols, 3}, torch::kByte);

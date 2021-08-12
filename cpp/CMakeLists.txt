@@ -26,6 +26,8 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable(main src/main.cpp 
   src/dataset.cpp
   include/dataset.h
+  include/utils.h
+  src/utils.cpp
    )
 target_include_directories(main PRIVATE include)
 target_link_libraries( main ${OpenCV_LIBS})

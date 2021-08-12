@@ -11,6 +11,7 @@ constexpr auto num_train_folders = 67;
 unsigned int n_threads = std::thread::hardware_concurrency() / 2;
 
 std::mutex my_mutex;
+using namespace utils;
 
 std::vector<std::string> folder_iter(const std::string &root,
                                      std::string file) {
@@ -36,12 +37,13 @@ std::vector<float> txtToTensor(std::string file) {
   return input;
 }
 void get_files(std::vector<std::string> folders,
-               std::vector<torch::Tensor> &poses, std::vector<cv::Mat> &imgs,
-               std::vector<cv::Mat> &depths, std::vector<torch::Tensor> &cams) {
+               std::vector<torch::Tensor> &poses,
+               std::vector<torch::Tensor> &imgs,
+               std::vector<torch::Tensor> &depths,
+               std::vector<torch::Tensor> &cams) {
   // Slows down code dramatically
   // Negates segmenation faults
-  std::lock_guard<std::mutex> g(my_mutex);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+  /* std::lock_guard<std::mutex> g(my_mutex); */
   int v_count = 0;
   std::string img_ext(".jpg");
   std::string depth_ext(".png");
@@ -50,10 +52,12 @@ void get_files(std::vector<std::string> folders,
     for (const auto &p : fs::directory_iterator(f)) {
       if (p.path().extension() == img_ext) {
         cv::Mat cv_image = cv::imread(p.path());
-        imgs.push_back(cv_image);
+        auto tensor_img = CVtoTensor(cv_image,30,30);
+        imgs.push_back(tensor_img);
       } else if (p.path().extension() == depth_ext) {
         cv::Mat cv_depth = cv::imread(p.path());
-        depths.push_back(cv_depth);
+        auto tensor_depth = CVtoTensor(cv_depth,30,30);
+        depths.push_back(tensor_depth);
       } else if (p.path().filename() == "cam.txt") {
         auto input = txtToTensor(p.path());
         auto out = torch::from_blob(input.data(), {3, 3});
@@ -66,6 +70,8 @@ void get_files(std::vector<std::string> folders,
       }
     }
   }
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
@@ -73,9 +79,9 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
   std::vector<torch::Tensor> poses;
   std::vector<torch::Tensor> cams;
 
-  std::vector<cv::Mat> imgs;
+  std::vector<torch::Tensor> imgs;
   std::vector<std::jthread> workers;
-  std::vector<cv::Mat> depths;
+  std::vector<torch::Tensor> depths;
 
   auto file = train ? root + kTrain : root + kVal;
   auto num_samples = train ? trainSize : valSize;
@@ -104,8 +110,8 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
     j += inc;
   }
   for (auto &w : workers) {
-    /* if (w.joinable()) w.join(); */
     w.detach();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   imgs.shrink_to_fit();
@@ -117,7 +123,8 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
 }
 
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
-  auto [images, depth] = read_data(root, mode == Mode::kTrain);
+  auto [images, depth] = read_data(root, mode);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 torch::data::Example<> KittiSet ::get(size_t index) {
