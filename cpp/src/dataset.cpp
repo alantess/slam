@@ -43,7 +43,7 @@ void get_files(std::vector<std::string> folders,
                std::vector<torch::Tensor> &cams) {
   // Slows down code dramatically
   // Negates segmenation faults
-  /* std::lock_guard<std::mutex> g(my_mutex); */
+  std::lock_guard<std::mutex> g(my_mutex);
   int v_count = 0;
   std::string img_ext(".jpg");
   std::string depth_ext(".png");
@@ -71,7 +71,6 @@ void get_files(std::vector<std::string> folders,
     }
   }
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
@@ -110,8 +109,9 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
     j += inc;
   }
   for (auto &w : workers) {
+    /* if(w.joinable()) */ 
+    /*   w.join(); */
     w.detach();
-    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   imgs.shrink_to_fit();
@@ -124,7 +124,6 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
 
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
   auto [images, depth] = read_data(root, mode);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 torch::data::Example<> KittiSet ::get(size_t index) {
