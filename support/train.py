@@ -21,6 +21,8 @@ def train_depth(model,
     best_score = np.inf
     model = model.to(device)
 
+    cam = CameraProjector(device,loss_fn)
+
     if load_model:
         model.load()
         print('MODEL LOADED.')
@@ -32,8 +34,9 @@ def train_depth(model,
         val_loss = 0
         # Training Loop
         for i, (img, tgt, depth, _, K, _) in enumerate(loop):
-            img = img.to(device)
-            tgt = tgt.to(device)
+            cam.K = K
+            img = img.to(device, dtype=torch.float32)
+            tgt = tgt.to(device, dtype=torch.float32)
             depth = depth.to(device)
 
             for p in model.parameters():
@@ -41,7 +44,9 @@ def train_depth(model,
             # Forward
             # with autocast():
             pred_depth = model(img, tgt)  # Bx1xWXH
-            loss = loss_fn(pred_depth, depth)
+            loss = cam.compute_loss(pred_depth, depth)
+
+            # loss = loss_fn(pred_depth, depth)
             loss.backward()
             optimizer.step()
 
@@ -57,8 +62,8 @@ def train_depth(model,
         val_loop = tqdm(val_loader)
         with torch.no_grad():
             for j, (img, tgt, depth, _, _, _) in enumerate(val_loop):
-                img = img.to(device)
-                tgt = tgt.to(device)
+                img = img.to(device, dtype=torch.float32)
+                tgt = tgt.to(device, dtype=torch.float32)
                 depth = depth.to(device)
 
                 # with autocast():

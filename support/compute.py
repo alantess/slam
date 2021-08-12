@@ -14,8 +14,9 @@ class CameraProjector(object):
             0  fy cy
             0  0  1
     """
-    def __init__(self, loss_fn=None):
+    def __init__(self, device,loss_fn=None):
         self.K = None
+        self.device = device
         self.loss_fn = loss_fn
         self.pixel_coords = None
         self.depth_map = None
@@ -36,6 +37,8 @@ class CameraProjector(object):
         self,
         depth_map: Tensor,
     ):
+        self.K = self.K.to(self.device,dtype=torch.float64)
+        depth_map = depth_map.to(self.device,dtype=torch.float64)
         """
         Converts a depth map into pixel coordinates  
         s[u,v,1] = k[Xc,Yc,Zc] --> [u,v,1] = 1/s[Xc,Yc,Zc] 

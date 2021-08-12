@@ -36,7 +36,8 @@ void get_files(std::vector<std::string> folders,
                std::vector<torch::Tensor> &poses, std::vector<cv::Mat> &imgs,
                std::vector<cv::Mat> &depths, torch::Tensor &cams) {
   // Slows down code dramatically
-  /* std::lock_guard<std::mutex> g(my_mutex); */
+  // Negates segmenation faults
+  std::lock_guard<std::mutex> g(my_mutex);
   int v_count = 0;
   std::string img_ext(".jpg");
   std::string depth_ext(".png");
@@ -55,15 +56,12 @@ void get_files(std::vector<std::string> folders,
         auto input = txtToTensor(p.path());
         cams[v_count] = torch::from_blob(input.data(), {3, 3});
         v_count++;
-        // Need to append to a tensor
       }
       if (p.path().filename() == "poses.txt") {
         auto input = txtToTensor(p.path());
         auto len = (int)input.size() / 12;
         auto out = torch::from_blob(input.data(), {len, 3, 4});
         poses.push_back(out);
-
-        // Need to append to a tensor
       }
     }
   }
@@ -75,7 +73,7 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
   std::vector<torch::Tensor> poses;
 
   std::vector<cv::Mat> imgs;
-  std::vector<std::jthread> processes;
+  std::vector<std::jthread> workers;
   std::vector<cv::Mat> depths;
 
   unsigned int n_threads = std::thread::hardware_concurrency();
@@ -89,14 +87,14 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
     std::vector<std::string> f_alloc(folders.begin() + prev,
                                      folders.begin() + j);
 
-    processes.push_back(std::jthread(get_files, f_alloc, std::ref(poses),
-                                     std::ref(imgs), std::ref(depths),
-                                     std::ref(cams)));
+    workers.push_back(std::jthread(get_files, f_alloc, std::ref(poses),
+                                   std::ref(imgs), std::ref(depths),
+                                   std::ref(cams)));
     prev = j;
     j += inc;
   }
-  for (auto &p : processes) {
-    if (p.joinable()) p.join();
+  for (auto &w : workers) {
+    if (w.joinable()) w.join();
   }
 
   auto depth_samples = (int)depths.size();
@@ -108,7 +106,7 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
 }
 
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
-  auto [images, depth] = read_data(root, mode);
+  auto [images, depth] = read_data(root, mode == Mode::kTrain);
 }
 
 torch::data::Example<> KittiSet ::get(size_t index) {

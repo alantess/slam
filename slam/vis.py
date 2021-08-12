@@ -53,12 +53,12 @@ def visualize(pt, camera, model=None):
 
 
 def main():
-    model = DepthNet(model_name='modeldpth.pt')
-    model.load()
+    # model = DepthNet(model_name='modeldpth.pt')
+    # model.load()
     proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt, proj, model)
+    visualize(pt, proj)
 
 
 if __name__ == '__main__':

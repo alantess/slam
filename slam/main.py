@@ -2,6 +2,7 @@ import sys
 
 sys.path.insert(0, "..")
 import torch
+import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import argparse
@@ -10,6 +11,13 @@ from dataset.data import *
 from vision.vision import *
 from support.test import *
 from networks.depthnet import DepthNet
+
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    torch.cuda.manual_seed(worker_seed)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SLAM')
@@ -47,6 +55,8 @@ if __name__ == '__main__':
     device = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+    g = torch.Generator()
+    g.manual_seed(0)
     SEED = 97
     torch.manual_seed(SEED)
     BATCH_SIZE = args.batch
@@ -76,7 +86,7 @@ if __name__ == '__main__':
 
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
-    loss_fn = torch.nn.SmoothL1Loss()
+    loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
@@ -85,11 +95,13 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
-                              pin_memory=PIN_MEM,
-                              shuffle=True)
+                              worker_init_fn=seed_worker,
+                              pin_memory=PIN_MEM
+                              )
     val_loader = DataLoader(valset,
                             batch_size=BATCH_SIZE,
                             num_workers=NUM_WORKERS,
+                            worker_init_fn=seed_worker,
                             pin_memory=PIN_MEM)
 
     if args.mode == 'test':
