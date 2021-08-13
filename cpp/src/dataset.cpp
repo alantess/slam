@@ -52,11 +52,11 @@ void get_files(std::vector<std::string> folders,
     for (const auto &p : fs::directory_iterator(f)) {
       if (p.path().extension() == img_ext) {
         cv::Mat cv_image = cv::imread(p.path());
-        auto tensor_img = CVtoTensor(cv_image,30,30);
+        auto tensor_img = CVtoTensor(cv_image, 30, 30);
         imgs.push_back(tensor_img);
       } else if (p.path().extension() == depth_ext) {
         cv::Mat cv_depth = cv::imread(p.path());
-        auto tensor_depth = CVtoTensor(cv_depth,30,30);
+        auto tensor_depth = CVtoTensor(cv_depth, 30, 30);
         depths.push_back(tensor_depth);
       } else if (p.path().filename() == "cam.txt") {
         auto input = txtToTensor(p.path());
@@ -70,7 +70,6 @@ void get_files(std::vector<std::string> folders,
       }
     }
   }
-
 }
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
@@ -96,23 +95,7 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
   imgs.reserve(num_samples);
   poses.reserve((int)folders.size());
   cams.reserve((int)folders.size());
-
-  while (j <= n_threads) {
-    std::vector<std::string> f_alloc(folders.begin() + prev,
-                                     folders.begin() + j);
-
-    workers.emplace_back(std::jthread(get_files, f_alloc, std::ref(poses),
-                                      std::ref(imgs), std::ref(depths),
-                                      std::ref(cams)));
-
-    prev = j;
-    j += inc;
-  }
-  for (auto &w : workers) {
-    /* if(w.joinable()) */ 
-    /*   w.join(); */
-    w.detach();
-  }
+  get_files(folders, poses, imgs, depths, cams);
 
   imgs.shrink_to_fit();
   depths.shrink_to_fit();
@@ -123,7 +106,7 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
 }
 
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
-  auto [images, depth] = read_data(root, mode);
+  auto [images, depth] = read_data(root, mode == Mode::kTrain);
 }
 
 torch::data::Example<> KittiSet ::get(size_t index) {
