@@ -2,6 +2,7 @@ import sys
 
 sys.path.insert(0, "..")
 import torch
+import time
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -20,6 +21,7 @@ def seed_worker(worker_id):
     torch.cuda.manual_seed(worker_seed)
 
 if __name__ == '__main__':
+    start_time = time.time();
     parser = argparse.ArgumentParser(description='SLAM')
     parser.add_argument('--kitti-dir',
                         type=str,
@@ -114,3 +116,6 @@ if __name__ == '__main__':
                     loss_fn, device, EPOCHS)
     else:
         print("Please choose an available mode: [train, test]")
+
+    end_time = time.time()
+    print(f"Execution Time {end_time-start_time:.3f}")

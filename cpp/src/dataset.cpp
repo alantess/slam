@@ -28,7 +28,8 @@ std::vector<std::string> folder_iter(const std::string &root,
   }
   return folders;
 }
-
+// Change vector from matrix to string
+// Append the paths intead of teh matrix
 std::vector<float> txtToTensor(std::string file) {
   std::ifstream input_stream(file);
   std::vector<float> input;
@@ -36,14 +37,10 @@ std::vector<float> txtToTensor(std::string file) {
                std::istream_iterator<float>());
   return input;
 }
-void get_files(std::vector<std::string> folders,
-               std::vector<torch::Tensor> &poses,
-               std::vector<torch::Tensor> &imgs,
-               std::vector<torch::Tensor> &depths,
-               std::vector<torch::Tensor> &cams) {
-  // Slows down code dramatically
-  // Negates segmenation faults
-  std::lock_guard<std::mutex> g(my_mutex);
+void get_files(std::vector<std::string> folders, std::vector<std::string> &imgs,
+               std::vector<std::string> &depths,
+               std::vector<std::string> &poses,
+               std::vector<std::string> &cams) {
   int v_count = 0;
   std::string img_ext(".jpg");
   std::string depth_ext(".png");
@@ -51,35 +48,25 @@ void get_files(std::vector<std::string> folders,
   for (auto &f : folders) {
     for (const auto &p : fs::directory_iterator(f)) {
       if (p.path().extension() == img_ext) {
-        cv::Mat cv_image = cv::imread(p.path());
-        auto tensor_img = CVtoTensor(cv_image, 30, 30);
-        imgs.push_back(tensor_img);
+        imgs.push_back(p.path());
       } else if (p.path().extension() == depth_ext) {
-        cv::Mat cv_depth = cv::imread(p.path());
-        auto tensor_depth = CVtoTensor(cv_depth, 30, 30);
-        depths.push_back(tensor_depth);
+        depths.push_back(p.path());
       } else if (p.path().filename() == "cam.txt") {
-        auto input = txtToTensor(p.path());
-        auto out = torch::from_blob(input.data(), {3, 3});
-        cams.push_back(out);
+        cams.push_back(p.path());
       } else if (p.path().filename() == "poses.txt") {
-        auto input = txtToTensor(p.path());
-        auto len = (int)input.size() / 12;
-        auto out = torch::from_blob(input.data(), {len, 3, 4});
-        poses.push_back(out);
+        poses.push_back(p.path());
       }
     }
   }
 }
 
-std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
-                                                  bool train) {
-  std::vector<torch::Tensor> poses;
-  std::vector<torch::Tensor> cams;
-
-  std::vector<torch::Tensor> imgs;
-  std::vector<std::jthread> workers;
-  std::vector<torch::Tensor> depths;
+std::tuple<std::vector<std::string>, std::vector<std::string>,
+           std::vector<std::string>, std::vector<std::string>>
+read_data(const std::string &root, bool train) {
+  std::vector<std::string> poses;
+  std::vector<std::string> cams;
+  std::vector<std::string> depths;
+  std::vector<std::string> imgs;
 
   auto file = train ? root + kTrain : root + kVal;
   auto num_samples = train ? trainSize : valSize;
@@ -95,18 +82,19 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string &root,
   imgs.reserve(num_samples);
   poses.reserve((int)folders.size());
   cams.reserve((int)folders.size());
-  get_files(folders, poses, imgs, depths, cams);
+
+  get_files(folders, imgs, depths, poses, cams);
 
   imgs.shrink_to_fit();
   depths.shrink_to_fit();
   poses.shrink_to_fit();
   cams.shrink_to_fit();
 
-  return {images, depths_t};
+  return {imgs, depths, poses, cams};
 }
 
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
-  auto [images, depth] = read_data(root, mode == Mode::kTrain);
+  auto [images, depth, poses, cam] = read_data(root, mode == Mode::kTrain);
 }
 
 torch::data::Example<> KittiSet ::get(size_t index) {
