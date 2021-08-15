@@ -60,9 +60,8 @@ void get_files(std::vector<std::string> folders, std::vector<std::string> &imgs,
   }
 }
 
-std::tuple<std::vector<std::string>, std::vector<std::string>,
-           std::vector<std::string>, std::vector<std::string>>
-read_data(const std::string &root, bool train) {
+template <typename T = std::vector<std::string>>
+std::tuple<T, T, T, T> read_data(const std::string &root, bool train) {
   std::vector<std::string> poses;
   std::vector<std::string> cams;
   std::vector<std::string> depths;
@@ -71,12 +70,6 @@ read_data(const std::string &root, bool train) {
   auto file = train ? root + kTrain : root + kVal;
   auto num_samples = train ? trainSize : valSize;
   auto folders = folder_iter(root, file);
-  int prev = 0;
-  int inc = folders.size() / n_threads;
-  int j = inc;
-
-  auto depths_t = torch::empty({num_samples, 3, 300, 300}, torch::kFloat);
-  auto images = torch::empty({num_samples, 3, 300, 300}, torch::kFloat);
 
   depths.reserve(num_samples);
   imgs.reserve(num_samples);
@@ -93,7 +86,11 @@ read_data(const std::string &root, bool train) {
   return {imgs, depths, poses, cams};
 }
 
+// Constructor
 KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
+  // Setup multithreading
+
+  // Gather Data
   auto [images, depth, poses, cam] = read_data(root, mode == Mode::kTrain);
 }
 
