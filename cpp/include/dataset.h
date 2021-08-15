@@ -27,12 +27,7 @@ struct KittiSet : torch::data::datasets::Dataset<KittiSet> {
   torch::optional<size_t> size() const override;
 
   private:
-  std::vector<std::jthread> workers;
-  torch::Tensor images_;
-  torch::Tensor targets_;
-  torch::Tensor depth_;
-  torch::Tensor Rt_;
-  torch::Tensor K_;
+  std::vector<std::map<std::string, std::string>> data;
 
   Mode mode_;
 };
