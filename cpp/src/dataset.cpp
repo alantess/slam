@@ -108,7 +108,6 @@ KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
   auto samples = read_data(root, mode == Mode::kTrain);
   data = samples;
 }
-
 torch::data::Example<> KittiSet ::get(size_t index) {
   auto sample = data[index];
   // Get Images
