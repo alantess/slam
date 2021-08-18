@@ -102,13 +102,16 @@ std::vector<std::map<std ::string, std::string>> read_data(
   return data;
 }
 
-// Constructor
-KittiSet::KittiSet(const std::string &root, Mode mode) : mode_(mode) {
+// Dataset
+KittiSet::KittiSet(const std::string &root,
+                   torch::data::transforms::Normalize<> &preprocess, Mode mode)
+    : mode_(mode), transforms(preprocess) {
   // Gather Data
   auto samples = read_data(root, mode == Mode::kTrain);
   data = samples;
 }
-torch::data::Example<> KittiSet ::get(size_t index) {
+template <typename T = torch::Tensor>
+std::tuple<T, T, T, T> KittiSet ::get(size_t index) {
   auto sample = data[index];
   // Get Images
   auto cv_img = cv::imread(sample["image"]);
@@ -122,7 +125,41 @@ torch::data::Example<> KittiSet ::get(size_t index) {
   auto len = (int)pose_data.size() / 12;
   auto pose = torch::from_blob(pose_data.data(), {len, 3, 4});
 
-  return {image, depth};
+  return {image, depth, pose, cam};
 }
 
-torch::optional<size_t> KittiSet::size() const { return (int)data.size(); }
+size_t KittiSet::size() const { return (int)data.size(); }
+
+// Data Loader
+DataLoader::DataLoader(KittiSet &dataset_, size_t batch_size_, bool shuffle_,
+                       size_t num_workers_, bool pin_memory_, bool drop_last_)
+    : dataset(dataset_),
+      batch_size(batch_size_),
+      shuffle(shuffle_),
+      num_workers(num_workers_),
+      pin_memory(pin_memory_),
+      drop_last(drop_last_) {
+  DataLoader::reset();
+  size = DataLoader::get_max_count();
+  idx.reserve(size);
+  for (size_t i = 0; i < size; i++) idx.at(i) = i;
+
+  if (drop_last) {
+    max_count = std::floor((float)size / (float)batch_size);
+    if ((max_count == 0) && (size > 0)) {
+      max_count = 1;
+    }
+  } else {
+    max_count = std::ceil((float)size / (float)batch_size);
+  }
+  mt.seed(std::rand());
+}
+
+/* template <typename T = torch::Tensor> */
+/* bool DataLoader::operator()(std::tuple<T, T, T, T> &data) {} */
+
+size_t DataLoader::get_max_count() { return dataset.size(); }
+void DataLoader::reset() {
+  count = 0;
+  return;
+}

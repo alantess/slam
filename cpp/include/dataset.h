@@ -14,32 +14,35 @@
 #include <thread>
 namespace fs = std::filesystem;
 
-struct KittiSet : torch::data::datasets::Dataset<KittiSet> {
+struct KittiSet {
   public:
   // The mode in which the dataset is loaded
   enum Mode { kTrain, kVal };
 
-  explicit KittiSet(const std::string& root, Mode mode = Mode::kTrain);
+  KittiSet(const std::string& root,
+           torch::data::transforms::Normalize<>& preprocess,
+           Mode mode = Mode::kTrain);
 
   // Returns the `Example` at the given `index`.
-  torch::data::Example<> get(size_t index) override;
+  template <typename T = torch::Tensor>
+  std::tuple<T, T, T, T> get(size_t index);
 
   // Returns the size of the dataset.
-  torch::optional<size_t> size() const override;
+  size_t size() const;
 
   private:
   std::vector<std::map<std::string, std::string>> data;
   std::vector<torch::Tensor> x;
-
+  torch::data::transforms::Normalize<> transforms;
   Mode mode_;
 };
-// Custom Data Loader
+// Iterates through a given dataset
 struct DataLoader {
   public:
   DataLoader() = default;
   DataLoader(KittiSet& dataset_, size_t batch_size_, bool shuffle_,
              size_t num_workers_, bool pin_memory_, bool drop_last_);
-  size_t get_count_max();
+  size_t get_max_count();
   template <typename T = torch::Tensor>
   bool operator()(std::tuple<T, T, T, T>& data);
   void reset();
@@ -54,6 +57,7 @@ struct DataLoader {
   size_t num_workers;
   size_t size;
   size_t count;
+  std::vector<size_t> idx;
   size_t max_count;
 };
 
