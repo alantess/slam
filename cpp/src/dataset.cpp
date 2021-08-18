@@ -110,22 +110,21 @@ KittiSet::KittiSet(const std::string &root,
   auto samples = read_data(root, mode == Mode::kTrain);
   data = samples;
 }
-template <typename T = torch::Tensor>
-std::tuple<T, T, T, T> KittiSet ::get(size_t index) {
+
+std::map<std::string, torch::Tensor> KittiSet::get(size_t index) {
+  vals.clear();
   auto sample = data[index];
-  // Get Images
   auto cv_img = cv::imread(sample["image"]);
-  auto image = CVtoTensor(cv_img, WIDTH, HEIGHT);
+  vals["image"] = CVtoTensor(cv_img, WIDTH, HEIGHT);
   auto cv_depth = cv::imread(sample["depth"]);
-  auto depth = CVtoTensor(cv_depth, WIDTH, HEIGHT);
-  // Get Cam and Pose
+  vals["depth"] = CVtoTensor(cv_depth, WIDTH, HEIGHT);
   auto cam_data = txtToTensor(sample["cam"]);
-  auto cam = torch::from_blob(cam_data.data(), {3, 3});
+  vals["cam"] = torch::from_blob(cam_data.data(), {3, 3});
   auto pose_data = txtToTensor(sample["pose"]);
   auto len = (int)pose_data.size() / 12;
-  auto pose = torch::from_blob(pose_data.data(), {len, 3, 4});
+  vals["pose"] = torch::from_blob(pose_data.data(), {len, 3, 4});
 
-  return {image, depth, pose, cam};
+  return vals;
 }
 
 size_t KittiSet::size() const { return (int)data.size(); }

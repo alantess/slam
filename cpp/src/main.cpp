@@ -2,20 +2,25 @@
 #include <iostream>
 
 #include "dataset.h"
+#include "utils.h"
 
 int main() {
   auto start_time = std::chrono::high_resolution_clock::now();
   auto BATCH_SIZE = 3;
-  auto preproc = torch::data::transforms::Normalize<>({0.5,0.5,0.5}, {0.5,0.5,0.5});
+  size_t idx = 6;
+  std::vector<double> mean = {0.406, 0.456, 0.485};
+  std::vector<double> std = {0.225, 0.224, 0.229};
+  auto preproc = torch::data::transforms::Normalize<>(mean, std);
 
   // Create Data loaders
   std::cout << "\nConstructing datasets...\n";
 
   std::string root = "/media/alan/seagate/datasets/kitti/cpp/";
   auto train_dataset = KittiSet(root, preproc);
+  auto val_dataset = KittiSet(root, preproc, KittiSet::Mode::kVal);
 
-
-  auto val_dataset = KittiSet(root, preproc, KittiSet::Mode::kVal );
+  auto z = train_dataset.get(5);
+  std::cout << z["cam"];
 
   /* // Train Function */
   /* std::cout << "Starting training....\n"; */

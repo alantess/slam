@@ -12,6 +12,8 @@
 #include <opencv2/opencv.hpp>
 #include <random>
 #include <thread>
+
+#include "utils.h"
 namespace fs = std::filesystem;
 
 struct KittiSet {
@@ -24,13 +26,15 @@ struct KittiSet {
            Mode mode = Mode::kTrain);
 
   // Returns the `Example` at the given `index`.
-  template <typename T = torch::Tensor>
-  std::tuple<T, T, T, T> get(size_t index);
+  /* template <typename T = torch::Tensor> */
+  /* std::tuple<T, T, T, T> get(size_t index); */
+  std::map<std::string, torch::Tensor> get(size_t index);
 
   // Returns the size of the dataset.
   size_t size() const;
 
   private:
+  std::map<std::string, torch::Tensor> vals;
   std::vector<std::map<std::string, std::string>> data;
   std::vector<torch::Tensor> x;
   torch::data::transforms::Normalize<> transforms;
