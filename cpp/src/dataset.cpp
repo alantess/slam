@@ -211,15 +211,15 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
   }
   // Stacks the data into a batch
 
-  /* if (pin_memory) { */
-  /*   data_1 = data_1.pin_memory(); */
-  /*   data_2 = data_2.pin_memory(); */
-  /*   data_3 = data_3.pin_memory(); */
-  /*   data_4 = data_4.pin_memory(); */
-  /* } */
+  if (pin_memory) {
+    data_1 = data_1.pin_memory();
+    data_2 = data_2.pin_memory();
+    data_3 = data_3.pin_memory();
+    data_4 = data_4.pin_memory();
+  }
 
   count++;
-  /* data = {data_1, data_2, data_3, data_4}; */
+  data = {data_1, data_2, data_3, data_4};
   imgs.clear();
   depths.clear();
   cams.clear();

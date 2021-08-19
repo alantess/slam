@@ -33,11 +33,10 @@ int main() {
 
   for (size_t i = 0; i < EPOCHS; i++) {
     while (train_loader(mini_batch)) {
-      /* auto image = std::get<0>(mini_batch).to(device); */
+      auto image = std::get<0>(mini_batch).to(device);
       /* auto depths = std::get<1>(mini_batch).to(device); */
       /* auto cams = std::get<2>(mini_batch).to(device); */
       /* auto poses = std::get<3>(mini_batch).to(device); */
-      break;
     }
   }
 
