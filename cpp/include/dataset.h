@@ -35,7 +35,6 @@ struct KittiSet {
   size_t size() const;
 
   private:
-  std::map<std::string, torch::Tensor> vals;
   std::vector<std::map<std::string, std::string>> data;
   std::vector<torch::Tensor> x;
   torch::data::transforms::Normalize<> transforms;

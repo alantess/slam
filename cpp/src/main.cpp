@@ -12,7 +12,7 @@ int main() {
   bool DROP_LAST = true;
   bool PIN_MEM = true;
   size_t EPOCHS = 1;
-  size_t WORKERS = 4;
+  size_t WORKERS = 0;
   std::vector<double> mean = {0.406, 0.456, 0.485};
   std::vector<double> std = {0.225, 0.224, 0.229};
   auto preproc = torch::data::transforms::Normalize<>(mean, std);
@@ -33,10 +33,10 @@ int main() {
 
   for (size_t i = 0; i < EPOCHS; i++) {
     while (train_loader(mini_batch)) {
-      auto image = std::get<0>(mini_batch).to(device);
-      auto depths = std::get<1>(mini_batch).to(device);
-      auto cams = std::get<2>(mini_batch).to(device);
-      auto poses = std::get<3>(mini_batch).to(device);
+      /* auto image = std::get<0>(mini_batch).to(device); */
+      /* auto depths = std::get<1>(mini_batch).to(device); */
+      /* auto cams = std::get<2>(mini_batch).to(device); */
+      /* auto poses = std::get<3>(mini_batch).to(device); */
       break;
     }
   }

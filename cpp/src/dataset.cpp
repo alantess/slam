@@ -117,21 +117,21 @@ void KittiSet::get(size_t index, std::vector<torch::Tensor> &imgs,
   vals.clear();
   auto sample = data[index];
   auto cv_img = cv::imread(sample["image"]);
-  vals["image"] = transforms(CVtoTensor(cv_img, WIDTH, HEIGHT)).unsqueeze(0);
+  auto image = transforms(CVtoTensor(cv_img, WIDTH, HEIGHT)).unsqueeze(0);
   auto cv_depth = cv::imread(sample["depth"]);
-  vals["depth"] = transforms(CVtoTensor(cv_depth, WIDTH, HEIGHT)).unsqueeze(0);
+  auto depth = transforms(CVtoTensor(cv_depth, WIDTH, HEIGHT)).unsqueeze(0);
   auto cam_data = txtToTensor(sample["cam"]);
-  vals["cam"] =
+  auto cam =
       torch::from_blob(cam_data.data(), {3, 3}, torch::kFloat).unsqueeze(0);
   auto pose_data = txtToTensor(sample["pose"]);
   auto len = (int)pose_data.size() / 12;
-  vals["pose"] = torch::from_blob(pose_data.data(), {len, 3, 4}, torch::kFloat)
-                     .unsqueeze(0);
+  auto pose = torch::from_blob(pose_data.data(), {len, 3, 4}, torch::kFloat)
+                  .unsqueeze(0);
 
-  imgs.emplace_back(vals["image"].clone());
-  depths.emplace_back(vals["depth"].clone());
-  cams.emplace_back(vals["cam"].clone());
-  poses.emplace_back(vals["pose"].clone());
+  imgs.emplace_back(image);
+  depths.emplace_back(depth);
+  cams.emplace_back(cam);
+  poses.emplace_back(pose);
 }
 
 size_t KittiSet::size() const { return (int)data.size(); }
@@ -174,7 +174,6 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
       cams{mini_batch}, poses{mini_batch};
 
   torch::Tensor data_1, data_2, data_3, data_4;
-  // Batch Index x Vector
   auto f = [](KittiSet &dataset, size_t i, std::vector<torch::Tensor> &imgs,
               std::vector<torch::Tensor> &depths,
               std::vector<torch::Tensor> &cams,
@@ -229,7 +228,7 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
   /* } */
 
   count++;
-  data = {data_1, data_2, data_3, data_4};
+  /* data = {data_1, data_2, data_3, data_4}; */
   imgs.clear();
   depths.clear();
   cams.clear();
