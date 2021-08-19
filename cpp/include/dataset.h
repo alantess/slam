@@ -27,8 +27,9 @@ struct KittiSet {
 
   // Returns the `Example` at the given `index`.
   /* template <typename T = torch::Tensor> */
-  /* std::tuple<T, T, T, T> get(size_t index); */
-  std::map<std::string, torch::Tensor> get(size_t index);
+  void get(size_t index, std::vector<torch::Tensor>& imgs,
+           std::vector<torch::Tensor>& depths, std::vector<torch::Tensor>& cams,
+           std::vector<torch::Tensor>& poses);
 
   // Returns the size of the dataset.
   size_t size() const;
@@ -43,16 +44,16 @@ struct KittiSet {
 // Iterates through a given dataset
 struct DataLoader {
   public:
-  DataLoader() = default;
   DataLoader(KittiSet& dataset_, size_t batch_size_, bool shuffle_,
              size_t num_workers_, bool pin_memory_, bool drop_last_);
   size_t get_max_count();
-  template <typename T = torch::Tensor>
-  bool operator()(std::tuple<T, T, T, T>& data);
+  bool operator()(std::tuple<torch::Tensor, torch::Tensor, torch::Tensor,
+                             torch::Tensor>& data);
   void reset();
 
   private:
   KittiSet dataset;
+  std::vector<std::jthread> workers;
   std::mt19937_64 mt;
   bool drop_last;
   size_t batch_size;

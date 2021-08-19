@@ -1,7 +1,5 @@
 #include "dataset.h"
 
-#include "utils.h"
-
 constexpr auto kTrain = "train.txt";
 constexpr auto kVal = "val.txt";
 constexpr auto valSize = 2266;
@@ -111,20 +109,29 @@ KittiSet::KittiSet(const std::string &root,
   data = samples;
 }
 
-std::map<std::string, torch::Tensor> KittiSet::get(size_t index) {
+void KittiSet::get(size_t index, std::vector<torch::Tensor> &imgs,
+                   std::vector<torch::Tensor> &depths,
+                   std::vector<torch::Tensor> &cams,
+                   std::vector<torch::Tensor> &poses) {
+  std::lock_guard<std::mutex> g(my_mutex);
   vals.clear();
   auto sample = data[index];
   auto cv_img = cv::imread(sample["image"]);
-  vals["image"] = transforms(CVtoTensor(cv_img, WIDTH, HEIGHT));
+  vals["image"] = transforms(CVtoTensor(cv_img, WIDTH, HEIGHT)).unsqueeze(0);
   auto cv_depth = cv::imread(sample["depth"]);
-  vals["depth"] = transforms(CVtoTensor(cv_depth, WIDTH, HEIGHT));
+  vals["depth"] = transforms(CVtoTensor(cv_depth, WIDTH, HEIGHT)).unsqueeze(0);
   auto cam_data = txtToTensor(sample["cam"]);
-  vals["cam"] = torch::from_blob(cam_data.data(), {3, 3}, torch::kFloat);
+  vals["cam"] =
+      torch::from_blob(cam_data.data(), {3, 3}, torch::kFloat).unsqueeze(0);
   auto pose_data = txtToTensor(sample["pose"]);
   auto len = (int)pose_data.size() / 12;
-  vals["pose"] = torch::from_blob(pose_data.data(), {len, 3, 4}, torch::kFloat);
+  vals["pose"] = torch::from_blob(pose_data.data(), {len, 3, 4}, torch::kFloat)
+                     .unsqueeze(0);
 
-  return vals;
+  imgs.emplace_back(vals["image"].clone());
+  depths.emplace_back(vals["depth"].clone());
+  cams.emplace_back(vals["cam"].clone());
+  poses.emplace_back(vals["pose"].clone());
 }
 
 size_t KittiSet::size() const { return (int)data.size(); }
@@ -145,6 +152,7 @@ DataLoader::DataLoader(KittiSet &dataset_, size_t batch_size_, bool shuffle_,
 
   idx.shrink_to_fit();
 
+  if (num_workers != 0) workers.reserve(num_workers);
   if (drop_last) {
     max_count = std::floor((float)size / (float)batch_size);
     if ((max_count == 0) && (size > 0)) {
@@ -156,15 +164,24 @@ DataLoader::DataLoader(KittiSet &dataset_, size_t batch_size_, bool shuffle_,
   mt.seed(std::rand());
 }
 
-template <typename T = torch::Tensor>
-bool DataLoader::operator()(std::tuple<T, T, T, T> &data) {
+bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
+                                       torch::Tensor, torch::Tensor> &data) {
   size_t i;
   size_t idx_start = batch_size * count;
   size_t idx_end = std::min(size, (idx_start + batch_size));
   size_t mini_batch = idx_end - idx_start;
-  torch::Tensor cam, pose, img, depth;
-  std::vector<std::jthread> workers;
-  std::tuple<T, T, T, T> *data_before;
+  std::vector<torch::Tensor> imgs{mini_batch}, depths{mini_batch},
+      cams{mini_batch}, poses{mini_batch};
+
+  torch::Tensor data_1, data_2, data_3, data_4;
+  // Batch Index x Vector
+  auto f = [](KittiSet &dataset, size_t i, std::vector<torch::Tensor> &imgs,
+              std::vector<torch::Tensor> &depths,
+              std::vector<torch::Tensor> &cams,
+              std::vector<torch::Tensor> &poses) {
+    dataset.get(i, imgs, depths, cams, poses);
+  };
+
   if ((count == 0) && shuffle)
     std::shuffle(idx.begin(), idx.end(), mt);
   else if (count == max_count) {
@@ -174,31 +191,49 @@ bool DataLoader::operator()(std::tuple<T, T, T, T> &data) {
   // Iterate through the mini batch and stack each params
   if (num_workers == 0) {
     for (i = 0; i < mini_batch; i++) {
-      auto iter = dataset.get(i);
-      img = torch::stack(iter["image"]);
-      depth = torch::stack(iter["depth"]);
-      pose = torch::stack(iter["pose"]);
-      cam = torch::stack(iter["cam"]);
+      dataset.get(i, imgs, depths, cams, poses);
+    }
+  } else {
+    for (i = 0; i < mini_batch; i++) {
+      workers.push_back(std::jthread(f, std::ref(dataset), i, std::ref(imgs),
+                                     std::ref(depths), std::ref(cams),
+                                     std::ref(poses)));
+    }
+    for (auto &w : workers)
+      if (w.joinable()) w.join();
+  }
+
+  // Stacks the data into a batch
+  for (size_t k = 0; k < mini_batch - 1; k++) {
+    auto img_start = imgs[k];
+    auto depth_start = depths[k];
+    auto cam_start = cams[k];
+    auto pose_start = poses[k];
+    if (k > 1) {
+      data_1 = torch::stack({img_start, imgs.at(k)}, 0);
+      data_2 = torch::stack({depth_start, depths.at(k)}, 0);
+      data_3 = torch::stack({cam_start, cams.at(k)}, 0);
+      data_4 = torch::stack({pose_start, poses.at(k)}, 0);
+      img_start = data_1;
+      depth_start = data_2;
+      cam_start = data_3;
+      pose_start = data_4;
     }
   }
 
-  data_before = {img, depth, pose, cam};
-  auto data_1 = std::get<0>(data_before[0]);
-  auto data_2 = std::get<1>(data_before[1]);
-  auto data_3 = std::get<2>(data_before[2]);
-  auto data_4 = std::get<3>(data_before[3]);
-
-  if (pin_memory) {
-    data_1 = data_1.pin_memory();
-    data_2 = data_2.pin_memory();
-    data_3 = data_3.pin_memory();
-    data_4 = data_4.pin_memory();
-  }
-  // Assign the data to data_before
+  /* if (pin_memory) { */
+  /*   data_1 = data_1.pin_memory(); */
+  /*   data_2 = data_2.pin_memory(); */
+  /*   data_3 = data_3.pin_memory(); */
+  /*   data_4 = data_4.pin_memory(); */
+  /* } */
 
   count++;
   data = {data_1, data_2, data_3, data_4};
-  delete[] data_before;
+  imgs.clear();
+  depths.clear();
+  cams.clear();
+  poses.clear();
   return true;
 }
 

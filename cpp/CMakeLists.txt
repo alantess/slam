@@ -25,9 +25,10 @@ message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable(main src/main.cpp 
   include/dataset.h
-  include/utils.h
   src/dataset.cpp
+  include/utils.h
   src/utils.cpp
+
    )
 target_include_directories(main PRIVATE include)
 target_link_libraries( main ${OpenCV_LIBS})
