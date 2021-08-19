@@ -12,7 +12,7 @@ int main() {
   bool DROP_LAST = true;
   bool PIN_MEM = true;
   size_t EPOCHS = 1;
-  size_t WORKERS = 0;
+  size_t WORKERS = 4;
   std::vector<double> mean = {0.406, 0.456, 0.485};
   std::vector<double> std = {0.225, 0.224, 0.229};
   auto preproc = torch::data::transforms::Normalize<>(mean, std);
