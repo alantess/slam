@@ -170,13 +170,6 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
   size_t mini_batch = idx_end - idx_start;
   std::vector<torch::Tensor> imgs, depths, cams, poses;
 
-  auto f = [](KittiSet &dataset, size_t i, std::vector<torch::Tensor> &imgs,
-              std::vector<torch::Tensor> &depths,
-              std::vector<torch::Tensor> &cams,
-              std::vector<torch::Tensor> &poses) {
-    dataset.get(i, imgs, depths, cams, poses);
-  };
-
   if ((count == 0) && shuffle)
     std::shuffle(idx.begin(), idx.end(), mt);
   else if (count == max_count) {
