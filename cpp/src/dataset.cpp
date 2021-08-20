@@ -12,7 +12,6 @@ constexpr auto num_val_folders = 9;
 constexpr auto num_train_folders = 67;
 unsigned int n_threads = std::thread::hardware_concurrency() / 2;
 
-std::mutex my_mutex;
 using namespace utils;
 // Retrieves folders
 std::vector<std::string> folder_iter(const std::string &root,
@@ -115,7 +114,6 @@ void KittiSet::get(size_t index, std::vector<torch::Tensor> &imgs,
                    std::vector<torch::Tensor> &depths,
                    std::vector<torch::Tensor> &cams,
                    std::vector<torch::Tensor> &poses) {
-  std::lock_guard<std::mutex> g(my_mutex);
   auto sample = data[index];
   auto cv_img = cv::imread(sample["image"]);
   auto image = transforms(CVtoTensor(cv_img, WIDTH, HEIGHT));

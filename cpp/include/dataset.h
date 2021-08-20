@@ -26,7 +26,6 @@ struct KittiSet {
            Mode mode = Mode::kTrain);
 
   // Returns the `Example` at the given `index`.
-  /* template <typename T = torch::Tensor> */
   void get(size_t index, std::vector<torch::Tensor>& imgs,
            std::vector<torch::Tensor>& depths, std::vector<torch::Tensor>& cams,
            std::vector<torch::Tensor>& poses);

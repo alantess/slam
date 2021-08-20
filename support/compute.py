@@ -36,9 +36,10 @@ class CameraProjector(object):
     def pixel_to_cam(
         self,
         depth_map: Tensor,
+        use_batch,
     ):
-        self.K = self.K.to(self.device,dtype=torch.float64)
-        depth_map = depth_map.to(self.device,dtype=torch.float64)
+        # self.K = self.K.to(self.device,dtype=torch.float32)
+        # depth_map = depth_map.to(self.device,dtype=torch.float32)
         """
         Converts a depth map into pixel coordinates  
         s[u,v,1] = k[Xc,Yc,Zc] --> [u,v,1] = 1/s[Xc,Yc,Zc] 
@@ -51,10 +52,6 @@ class CameraProjector(object):
             depth_map = depth_map.squeeze(1)
 
         b, h, w = depth_map.size()
-        if b > 1:
-            use_batch = True
-        else:
-            use_batch = False
         depth_map = 1 / depth_map
         inv = self.K.inverse()
 
@@ -73,6 +70,5 @@ class CameraProjector(object):
         return uv
 
     def compute_loss(self, pred: Tensor, truth: Tensor):
-        estimate = self.pixel_to_cam(pred)
-        y = self.pixel_to_cam(truth)
-        return self.loss_fn(estimate, y)
+        y = self.pixel_to_cam(truth, True)
+        return self.loss_fn(pred, y)

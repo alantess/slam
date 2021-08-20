@@ -34,17 +34,16 @@ def train_depth(model,
         val_loss = 0
         # Training Loop
         for i, (img, tgt, depth, _, K, _) in enumerate(loop):
-            cam.K = K
             img = img.to(device, dtype=torch.float32)
-            tgt = tgt.to(device, dtype=torch.float32)
-            depth = depth.to(device)
-
+            K = K.to(device, dtype=torch.float32)
+            depth = depth.to(device, dtype=torch.float32)
+            cam.K = K
             for p in model.parameters():
                 p.grad = None
             # Forward
             # with autocast():
-            pred_depth = model(img, tgt)  # Bx1xWXH
-            loss = cam.compute_loss(pred_depth, depth)
+            pred= model(img, K)  # Bx1xWXH
+            loss = cam.compute_loss(pred, depth)
 
             # loss = loss_fn(pred_depth, depth)
             loss.backward()
@@ -61,14 +60,14 @@ def train_depth(model,
         print('Validation')
         val_loop = tqdm(val_loader)
         with torch.no_grad():
-            for j, (img, tgt, depth, _, _, _) in enumerate(val_loop):
+            for j, (img, tgt, depth, _, K, _) in enumerate(val_loop):
                 img = img.to(device, dtype=torch.float32)
-                tgt = tgt.to(device, dtype=torch.float32)
-                depth = depth.to(device)
-
+                depth = depth.to(device, dtype=torch.float32)
+                K = K.to(device, dtype=torch.float32)
+                cam.K = K
                 # with autocast():
-                pred_depth = model(img, tgt)
-                v_loss = loss_fn(pred_depth, depth)
+                out = model(img, K)
+                v_loss = cam.compute_loss(out, depth)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 
