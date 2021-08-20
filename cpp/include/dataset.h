@@ -52,7 +52,6 @@ struct DataLoader {
 
   private:
   KittiSet dataset;
-  std::vector<std::jthread> workers;
   std::mt19937_64 mt;
   bool drop_last;
   size_t batch_size;

@@ -1,5 +1,7 @@
 #include "dataset.h"
 
+#include "omp.h"
+
 constexpr auto kTrain = "train.txt";
 constexpr auto kVal = "val.txt";
 constexpr auto valSize = 2266;
@@ -149,7 +151,6 @@ DataLoader::DataLoader(KittiSet &dataset_, size_t batch_size_, bool shuffle_,
 
   idx.shrink_to_fit();
 
-  if (num_workers != 0) workers.reserve(num_workers);
   if (drop_last) {
     max_count = std::floor((float)size / (float)batch_size);
     if ((max_count == 0) && (size > 0)) {
@@ -188,20 +189,21 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
       dataset.get(i, imgs, depths, cams, poses);
     }
   } else {
+    omp_set_num_threads(num_workers);
     for (i = 0; i < mini_batch; i++) {
-      workers.push_back(std::jthread(f, std::ref(dataset), i, std::ref(imgs),
-                                     std::ref(depths), std::ref(cams),
-                                     std::ref(poses)));
+#pragma omp parallel
+      {
+#pragma omp critical
+        { dataset.get(i, imgs, depths, cams, poses); }
+      }
     }
-    for (auto &w : workers)
-      if (w.joinable()) w.join();
   }
   // Stores the data
   auto data_1 = torch::empty({(int64_t)mini_batch, 3, WIDTH, HEIGHT});
   auto data_2 = torch::empty({(int64_t)mini_batch, 3, WIDTH, HEIGHT});
   auto data_3 = torch::empty({(int64_t)mini_batch, 3, 3});
   auto pose_size = (int)poses[0].sizes()[0];
-  auto data_4 = torch::empty({(int64_t)mini_batch, pose_size,3, 4});
+  auto data_4 = torch::empty({(int64_t)mini_batch, pose_size, 3, 4});
 
   for (int k = 0; k < mini_batch; k++) {
     data_1[k] = imgs[k];
@@ -226,7 +228,6 @@ bool DataLoader::operator()(std::tuple<torch::Tensor, torch::Tensor,
   poses.clear();
   return true;
 }
-
 
 size_t DataLoader::get_max_count() { return dataset.size(); }
 void DataLoader::reset() {

@@ -37,6 +37,8 @@ int main() {
       /* auto depths = std::get<1>(mini_batch).to(device); */
       /* auto cams = std::get<2>(mini_batch).to(device); */
       /* auto poses = std::get<3>(mini_batch).to(device); */
+      break;
+
     }
   }
 
