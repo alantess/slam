@@ -1,6 +1,6 @@
 import os
 import torch
-from backbone import *
+from .backbone import *
 from torch import nn
 
 
@@ -37,9 +37,9 @@ class SLAMNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-if __name__ == '__main__':
-    model = SLAMNet()
-    x = torch.randn(2, 3, 256, 832)
-    cam = torch.randn(2,3,3)
-    out = model(x, cam)
-    print(out.size())
+# if __name__ == '__main__':
+#     model = SLAMNet()
+#     x = torch.randn(2, 3, 256, 832)
+#     cam = torch.randn(2,3,3)
+#     out = model(x, cam)
+#     print(out.size())
