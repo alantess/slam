@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     depth_model = SLAMNet()
 
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
+    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=3e-6)
 
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
