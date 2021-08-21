@@ -44,7 +44,7 @@ if __name__ == '__main__':
         '--mode',
         type=str,
         default='train',
-        help='Trains Models or Test the models. Args: [pose,depth,test]')
+        help='Trains Models or Test the models. Args: [pose,slam,test]')
     parser.add_argument(
         '--video',
         type=str,
@@ -84,9 +84,9 @@ if __name__ == '__main__':
 
     print('=> Setting up network')
 
-    depth_model = SLAMNet()
+    slam_model = SLAMNet()
 
-    depth_optim = torch.optim.Adam(depth_model.parameters(), lr=3e-6)
+    slam_optim = torch.optim.Adam(slam_model.parameters(), lr=3e-6)
 
     loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
@@ -107,12 +107,12 @@ if __name__ == '__main__':
                             pin_memory=PIN_MEM)
 
     if args.mode == 'test':
-        show_depth_example(depth_model, device, val_loader)
-        visualize_depth(depth_model, args.video, preprocess, device,
+        show_depth_example(slam_model, device, val_loader)
+        visualize_depth(slam_model, args.video, preprocess, device,
                         args.img_height, args.img_width)
-        test_depth(depth_model, val_loader)
+        test_depth(slam_model, val_loader)
     elif args.mode == 'train':
-        train_depth(depth_model, train_loader, val_loader, depth_optim,
+        train_depth(slam_model, train_loader, val_loader, slam_optim,
                     loss_fn, device, EPOCHS)
     else:
         print("Please choose an available mode: [train, test]")
