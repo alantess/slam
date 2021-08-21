@@ -22,17 +22,14 @@ class Encoder(nn.Module):
 class CalibNet(nn.Module):
     def __init__(self, size, layers):
         super(CalibNet, self).__init__()
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=size, nhead=8, batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=layers * 2)
-        self.gru = nn.GRU(size, int(size * 1.5), layers, batch_first=True)
+        self.gru = nn.GRU(size, size*2, layers, batch_first=True)
+        self.out = nn.Linear(size*2 , int(size*1.5))
 
     def forward(self, img):
         b = img.size(0)
-        img = img.flatten(2)
-        x = self.transformer(img)
+        x = img.flatten(2)
         x, h0 = self.gru(x)
+        x = self.out(x)
         x = x.flatten(1)
         feats = x.size(1) // 3
         x = x.reshape(b, feats, 3)

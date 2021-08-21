@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, "..")
 from vision.ptcloud import *
-from networks.depthnet import DepthNet
+from networks.slamnet import SLAMNet
 from dataset.data import *
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -33,32 +33,31 @@ def visualize(pt, camera, model=None):
         model.to(device)
 
     for i, (img, tgt, depth, _, k, _) in enumerate(loader):
-        k = k.to(device)
-        # depth = depth.to(device, dtype=torch.float64)
+        k = k.to(device, dtype=torch.float32)
+        img = img.to(device, dtype=torch.float32)
 
         if model:
             img = img.to(device)
-            tgt = tgt.to(device)
             with torch.no_grad():
                 # with torch.cuda.amp.autocast():
-                pred = model(img, tgt)
-                depth = pred.detach().to(dtype=torch.float32)
+                pred = model(img, k)
+                pred = pred.detach().to(dtype=torch.float32)
+                # depth = pred.detach().to(dtype=torch.float32)
         # camera.K = k[0].to(dtype=torch.float64)
         # xyz = camera.pixel_to_cam(depth)
-        # xyz = xyz.cpu().numpy()
-        xyz = depth.cpu()
+        xyz = pred.cpu()
+        # xyz = depth.cpu()
 
-        print(xyz.dtype)
         pt.run(xyz)
 
 
 def main():
-    # model = DepthNet(model_name='modeldpth.pt')
-    # model.load()
+    model = SLAMNet()
+    model.load()
     proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt, proj)
+    visualize(pt, proj, model)
 
 
 if __name__ == '__main__':
