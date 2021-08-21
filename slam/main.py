@@ -1,4 +1,5 @@
 import sys
+import os
 
 sys.path.insert(0, "..")
 import torch
@@ -14,6 +15,7 @@ from support.test import *
 from networks.slamnet import SLAMNet
 
 
+
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
@@ -21,6 +23,12 @@ def seed_worker(worker_id):
     torch.cuda.manual_seed(worker_seed)
 
 if __name__ == '__main__':
+    os.environ["OMP_NUM_THREADS"] = "16"
+    os.environ["OMP_SCHEDULE"]="STATIC"
+    os.environ["OMP_PROC_BIND"]="CLOSE"
+    os.environ["GOMP_CPU_AFFINITY"] = "0-16"
+    os.environ["KMP_BLOCKTIME"] = "1"
+
     start_time = time.time();
     parser = argparse.ArgumentParser(description='SLAM')
     parser.add_argument('--kitti-dir',
@@ -44,7 +52,7 @@ if __name__ == '__main__':
         '--mode',
         type=str,
         default='train',
-        help='Trains Models or Test the models. Args: [pose,slam,test]')
+        help='Trains Models or Test the models.')
     parser.add_argument(
         '--video',
         type=str,
@@ -88,7 +96,7 @@ if __name__ == '__main__':
 
     slam_optim = torch.optim.Adam(slam_model.parameters(), lr=3e-6)
 
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
@@ -97,6 +105,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
+                              shuffle=True,
                               worker_init_fn=seed_worker,
                               pin_memory=PIN_MEM
                               )
