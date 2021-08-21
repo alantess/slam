@@ -1,6 +1,6 @@
 import os
 import torch
-from .backbone import *
+from backbone import *
 from torch import nn
 
 
@@ -14,7 +14,7 @@ class SLAMNet(nn.Module):
 
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, model_name)
-        self.calib = CalibNet(208, 2)
+        self.calib = CalibNet(208, 4)
 
     def forward(self, img, cam):
         b = img.size()[0]
@@ -37,9 +37,9 @@ class SLAMNet(nn.Module):
         self.load_state_dict(torch.load(self.file))
 
 
-# if __name__ == '__main__':
-#     model = SLAMNet()
-#     x = torch.randn(2, 3, 256, 832)
-#     cam = torch.randn(2,3,3)
-#     out = model(x, cam)
-#     print(out.size())
+if __name__ == '__main__':
+    model = SLAMNet()
+    x = torch.randn(2, 3, 256, 832)
+    cam = torch.randn(2,3,3)
+    out = model(x, cam)
+    print(out.size())
