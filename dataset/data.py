@@ -4,6 +4,7 @@ import cv2 as cv
 import glob
 import numpy as np
 import torchvision
+from support.compute import CameraProjector
 from torch.utils.data import Dataset
 
 
@@ -24,6 +25,7 @@ class KittiSet(Dataset):
         self.std = 0.229
         self.samples = None
         self._crawl_folders()
+        self.cam = CameraProjector()
 
     def _crawl_folders(self):
         seq_set = []
@@ -90,9 +92,8 @@ class KittiSet(Dataset):
             Rt = torch.from_numpy(Rt)
             Rt = (Rt - self.mean) / self.std
             k = torch.from_numpy(k)
-            k_inv = torch.from_numpy(k_inv)
 
-        return s, s_, depth, Rt, k, k_inv
+        return s, s_, depth, Rt, k,k_inv
 
 
 # if __name__ == '__main__':

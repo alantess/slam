@@ -14,7 +14,7 @@ class CameraProjector(object):
             0  fy cy
             0  0  1
     """
-    def __init__(self, device,loss_fn=None):
+    def __init__(self, device=None,loss_fn=None):
         self.K = None
         self.device = device
         self.loss_fn = loss_fn

@@ -11,7 +11,7 @@ from support.train import *
 from dataset.data import *
 from vision.vision import *
 from support.test import *
-from networks.depthnet import DepthNet
+from networks.slamnet import SLAMNet
 
 
 def seed_worker(worker_id):
@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     print('=> Setting up network')
 
-    depth_model = DepthNet(model_name='modeldpth.pt')
+    depth_model = SLAMNet()
 
     depth_optim = torch.optim.Adam(depth_model.parameters(), lr=1e-4)
 
