@@ -22,40 +22,21 @@ class Encoder(nn.Module):
 class CalibNet(nn.Module):
     def __init__(self, size, layers):
         super(CalibNet, self).__init__()
-        self.gru = nn.GRU(size, size * 2, layers, batch_first=True)
-        self.out = nn.Linear(size * 2, int(size * 0.5))
+        self.activation = nn.SELU()
+        self.gru = nn.GRU(size, size*2, layers, batch_first=True)
+        self.h_layer1 = nn.Linear(size*2,size*2)
+        self.h_layer2 = nn.Linear(size*2,size*2)
+        self.drop = nn.Dropout(p=0.2)
+        self.out = nn.Linear(size*2 , int(size*1.5))
 
     def forward(self, img):
         b = img.size(0)
         x = img.flatten(2)
         x, h0 = self.gru(x)
-        x = self.get_uv(x)
+        x = self.activation(self.h_layer1(x))
+        x = self.activation(self.drop(self.h_layer2(x)))
         x = self.out(x)
-        x = x.flatten(2)
-        feats = x.size(2)
+        x = x.flatten(1)
+        feats = x.size(1) // 3
         x = x.reshape(b, feats, 3)
         return x
-
-    def set_id_grid(self, x: Tensor):
-        b, h, w = x.size()
-        # Traverse though the X and Y of the pixel
-        i_range = torch.arange(0, h).view(1, h, 1).expand(1, h, w).type_as(x)  # 1xHxW
-        j_range = torch.arange(0, w).view(1, 1, w).expand(1, h, w).type_as(x)  # 1xHxW
-        ones = torch.ones(1, h, w).type_as(x)
-        return torch.stack((j_range, i_range, ones), dim=1)
-
-    def get_uv(self, x: Tensor):
-        if int(len(x.size())) == 4:
-            x = x.squeeze(1)
-
-        b, h, w = x.size()
-        x = 1 / x
-        pixel_coords = self.set_id_grid(x)
-        current_pixel_coords = (
-            pixel_coords[:, :, :h, :w].expand(b, 3, h, w).reshape(b, 3, -1)
-        )
-
-        cam_coords = current_pixel_coords.reshape(b, 3, h, w)
-        uv = cam_coords * x.unsqueeze(1)
-
-        return uv
