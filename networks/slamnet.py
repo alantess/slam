@@ -25,7 +25,6 @@ class SLAMNet(nn.Module):
         img = (k @ img).reshape(b, 3, h, w)
         x = self.encoder(img)
         x = self.calib(x)
-
         return x
 
     def save(self):
