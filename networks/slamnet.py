@@ -11,7 +11,8 @@ class SLAMNet(nn.Module):
         super(SLAMNet, self).__init__()
         self.activation = nn.SELU()
         self.encoder = Encoder()
-
+        self.decoder = Decoder()
+        self.extractor = Extractor() 
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, model_name)
         self.calib = CalibNet(208, 4)
@@ -24,7 +25,10 @@ class SLAMNet(nn.Module):
         img = img.flatten(2)
         img = (k @ img).reshape(b, 3, h, w)
         x = self.encoder(img)
+        decoded = self.decoder(x)
         x = self.calib(x)
+        x = x.reshape(b,3,h,w)
+        x = self.extractor(x,decoded)
         return x
 
     def save(self):

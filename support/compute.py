@@ -71,5 +71,5 @@ class CameraProjector(object):
 
     def compute_loss(self, pred: Tensor, truth: Tensor):
         y = self.pixel_to_cam(truth, True)
-        y = y.mul(10).clamp(-10,10)
+        y = y.mul(2).clamp(-2,2)
         return self.loss_fn(pred, y)
