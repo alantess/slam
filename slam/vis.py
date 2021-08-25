@@ -1,6 +1,7 @@
 import sys
 
 sys.path.insert(0, "..")
+import cv2 as cv
 from vision.ptcloud import *
 from networks.slamnet import SLAMNet
 from dataset.data import *
@@ -26,6 +27,7 @@ s, s_, depth, rt, k, k_inv = next(iter(loader))
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device(
     'cpu')
 
+import matplotlib.pyplot as plt
 
 def visualize(pt, camera, model=None):
     print("Running PointCloud...")
@@ -46,6 +48,8 @@ def visualize(pt, camera, model=None):
         # camera.K = k[0].to(dtype=torch.float64)
         # xyz = camera.pixel_to_cam(depth)
         xyz = pred.cpu()
+        
+
         # xyz = depth.cpu()
 
         pt.run(xyz)

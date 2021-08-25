@@ -65,7 +65,7 @@ class Extractor(nn.Module):
     def __init__(self):
         super(Extractor, self).__init__()
         self.activation = nn.SELU()
-        layers = [6,32,128,128,32,16,3]
+        layers = [6,32,128,128,32,16,1]
         mlp = {}
         for i in range(len(layers) -1):
             name = "layer" + str(i)

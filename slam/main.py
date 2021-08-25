@@ -119,7 +119,7 @@ if __name__ == '__main__':
         show_depth_example(slam_model, device, val_loader)
         visualize_depth(slam_model, args.video, preprocess, device,
                         args.img_height, args.img_width)
-        test_depth(slam_model, val_loader)
+        # test_depth(slam_model, val_loader)
     elif args.mode == 'train':
         train_depth(slam_model, train_loader, val_loader, slam_optim,
                     loss_fn, device, EPOCHS)

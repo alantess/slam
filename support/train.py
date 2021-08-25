@@ -21,7 +21,6 @@ def train_depth(model,
     best_score = np.inf
     model = model.to(device)
 
-    cam = CameraProjector(device,loss_fn)
 
     if load_model:
         model.load()
@@ -37,22 +36,18 @@ def train_depth(model,
             img = img.to(device, dtype=torch.float32)
             K = K.to(device, dtype=torch.float32)
             depth = depth.to(device, dtype=torch.float32)
-            cam.K = K
             for p in model.parameters():
                 p.grad = None
             # Forward
-            # with autocast():
-            pred= model(img, K)  # Bx1xWXH
-            loss = cam.compute_loss(pred, depth)
+            with autocast():
+                pred= model(img, K)  # Bx1xhXw
+                loss = loss_fn(pred, depth)
 
-            # loss = loss_fn(pred_depth, depth)
-            loss.backward()
-            optimizer.step()
 
             # Backwards
-            # scaler.scale(loss).backward()
-            # scaler.step(optimizer)
-            # scaler.update()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             total_loss += loss.item()
             loop.set_postfix(loss=loss.item())
@@ -64,10 +59,9 @@ def train_depth(model,
                 img = img.to(device, dtype=torch.float32)
                 depth = depth.to(device, dtype=torch.float32)
                 K = K.to(device, dtype=torch.float32)
-                cam.K = K
-                # with autocast():
-                out = model(img, K)
-                v_loss = cam.compute_loss(out, depth)
+                with autocast():
+                    out = model(img, K)
+                    v_loss = loss_fn(out, depth)
                 val_loss += v_loss.item()
                 val_loop.set_postfix(val_loss=v_loss.item())
 

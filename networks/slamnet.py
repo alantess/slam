@@ -29,6 +29,7 @@ class SLAMNet(nn.Module):
         x = self.calib(x)
         x = x.reshape(b,3,h,w)
         x = self.extractor(x,decoded)
+        x = x.reshape(b,1,h,w)
         return x
 
     def save(self):
