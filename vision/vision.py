@@ -67,14 +67,14 @@ def visualize_depth(model,
 
 
 def show_depth_example(model, device, loader):
-    s, s_, _, _, _, _ = next(iter(loader))
+    s, s_, _, _, k, _ = next(iter(loader))
     model.load()
     model.to(device)
-    s = s.to(device)
-    s_ = s_.to(device)
+    s = s.to(device, dtype=torch.float32)
+    k = k.to(device, dtype=torch.float32)
     with torch.no_grad():
         with autocast():
-            y = model(s, s_)
+            y = model(s, k)
 
     y = y[0].permute(1, 2, 0).detach().cpu().numpy().astype(np.float32)
 

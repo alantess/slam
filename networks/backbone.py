@@ -12,76 +12,86 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         resnet = models.resnet152()
         modules = list(resnet.children())
-        self.encoder = nn.Sequential(*modules[:8])
+        # Original Image
+        self.original_conv1 = nn.Conv2d(3, 64, 1, 1)
+        self.original_conv2 = nn.Conv2d(64, 64, 1, 1)
+        # Encoder
+        self.layer1 = nn.Sequential(*modules[:3])
+        self.layer2 = nn.Sequential(*modules[3:5])
+        self.layer3 = nn.Sequential(*modules[5:6])
+        self.layer4 = nn.Sequential(*modules[6:7])
+        self.layer5 = nn.Sequential(*modules[7:8])
+        # Upsampling
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.layer5_up = nn.Conv2d(2048, 2048, 1)
+        self.layer4_up = nn.Conv2d(1024, 1024, 1)
+        self.layer3_up = nn.Conv2d(512, 512, 1)
+        self.layer2_up = nn.Conv2d(256, 256, 1)
+        self.layer1_up = nn.Conv2d(64, 64, 1)
 
-    def forward(self, src):
-        src = self.encoder(src)
-        return src
+        # Reduce the channels
+        self.conv5_up = nn.Conv2d(2048 + 1024, 1024, 1, 1)
+        self.conv4_up = nn.Conv2d(1024 + 512, 512, 1, 1)
+        self.conv3_up = nn.Conv2d(512 + 256, 256, 1, 1)
+        self.conv2_up = nn.Conv2d(256 + 64, 64, 1, 1)
+        self.conv1_up = nn.Conv2d(64 + 64, 1, 1, 1)
+        self.calib = CalibNet(208,4)
+        self.activation = nn.SELU()
+
+
+    def forward(self, x):
+        original = self.activation(self.original_conv1(x))
+        original = self.activation(self.original_conv2(original))
+        # Encoder
+        layer1 = self.layer1(x)
+        layer2 = self.layer2(layer1)
+        layer3 = self.layer3(layer2)
+        layer4 = self.layer4(layer3)
+        layer5 = self.layer5(layer4)
+        layer5 = self.layer5_up(layer5)
+        b = layer5.size(0)
+        d = layer5.size(1)
+        h = layer5.size(2)
+        w = layer5.size(3)
+
+        layer5 = self.calib(layer5).reshape(b,d,h,w)
+        # Decoder L5
+        x = self.upsample(layer5)
+        layer4 = self.activation(self.layer4_up(layer4))
+        x = torch.cat([x, layer4], dim=1)
+        x = self.activation(self.conv5_up(x))
+        # L4
+        x = self.upsample(x)
+        layer3 = self.activation(self.layer3_up(layer3))
+        x = torch.cat([x, layer3], dim=1)
+        x = self.activation(self.conv4_up(x))
+        # L3
+        x = self.upsample(x)
+        layer2 = self.activation(self.layer2_up(layer2))
+        x = torch.cat([x, layer2], dim=1)
+        x = self.activation(self.conv3_up(x))
+        # L2
+        x = self.upsample(x)
+        layer1 = self.activation(self.layer1_up(layer1))
+        x = torch.cat([x, layer1], dim=1)
+        x = self.activation(self.conv2_up(x))
+        # L1
+        x = self.upsample(x)
+        x = torch.cat([x, original], dim=1)
+        x = self.conv1_up(x)
+
+        return x
 
 
 class CalibNet(nn.Module):
     def __init__(self, size, layers):
         super(CalibNet, self).__init__()
         self.activation = nn.SELU()
-        self.gru = nn.GRU(size, size * 2, layers, batch_first=True)
-        self.h_layer1 = nn.Linear(size * 2, size * 2)
-        self.h_layer2 = nn.Linear(size * 2, size * 2)
-        self.drop = nn.Dropout(p=0.2)
-        self.out = nn.Linear(size * 2, int(size * 1.5))
+        encoder_layer = nn.TransformerEncoderLayer(d_model=208, nhead=8)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
     def forward(self, img):
-        b = img.size(0)
         x = img.flatten(2)
-        x, h0 = self.gru(x)
-        x = self.activation(self.h_layer1(x))
-        x = self.activation(self.drop(self.h_layer2(x)))
-        x = self.out(x)
-        x = x.flatten(1)
-        feats = x.size(1) // 3
-        x = x.reshape(b, feats, 3)
+        x = self.transformer(x)
         return x
 
-
-class Decoder(nn.Module):
-    def __init__(self):
-        super(Decoder, self).__init__()
-        deconvs = {}
-        channels = [2048,1024,512,256,128, 3]
-        for c in range(len(channels) - 1):
-            name = "conv" + str(c)
-            deconvs[name] = nn.ConvTranspose2d(channels[c], channels[c+1], 2,2)
-
-        self.deconvs = nn.ModuleDict(deconvs)
-        self.activation = nn.SELU()
-
-
-    def forward(self, x):
-        for i in self.deconvs:
-            x = self.activation(self.deconvs[i](x))
-        return x
-
-
-class Extractor(nn.Module):
-    def __init__(self):
-        super(Extractor, self).__init__()
-        self.activation = nn.SELU()
-        layers = [6,32,128,128,32,16,1]
-        mlp = {}
-        for i in range(len(layers) -1):
-            name = "layer" + str(i)
-            mlp[name] = nn.Linear(layers[i] , layers[i+1])
-        self.mlp = nn.ModuleDict(mlp)
-
-
-        
-    def forward(self, x,y):
-        x = torch.cat((x,y),1)
-        x = x.flatten(2).permute(0,2,1)
-        for i in self.mlp:
-            if i == 'layer5':
-                x = self.mlp[i](x)
-            else:
-                x = self.activation(self.mlp[i](x))
-        return x
-
-    

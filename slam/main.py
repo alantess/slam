@@ -71,8 +71,8 @@ if __name__ == '__main__':
     torch.manual_seed(SEED)
     BATCH_SIZE = args.batch
     PIN_MEM = True
-    NUM_WORKERS = 4
-    EPOCHS = 20
+    NUM_WORKERS = 8
+    EPOCHS = 5
 
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     slam_optim = torch.optim.Adam(slam_model.parameters(), lr=3e-6)
 
-    loss_fn = torch.nn.SmoothL1Loss()
+    loss_fn = torch.nn.MSELoss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)
@@ -105,7 +105,6 @@ if __name__ == '__main__':
     train_loader = DataLoader(trainset,
                               batch_size=BATCH_SIZE,
                               num_workers=NUM_WORKERS,
-                              shuffle=True,
                               worker_init_fn=seed_worker,
                               pin_memory=PIN_MEM
                               )

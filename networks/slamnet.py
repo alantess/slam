@@ -11,11 +11,8 @@ class SLAMNet(nn.Module):
         super(SLAMNet, self).__init__()
         self.activation = nn.SELU()
         self.encoder = Encoder()
-        self.decoder = Decoder()
-        self.extractor = Extractor() 
         self.chkpt_dir = chkpt_dir
         self.file = os.path.join(chkpt_dir, model_name)
-        self.calib = CalibNet(208, 4)
 
     def forward(self, img, cam):
         b = img.size()[0]
@@ -23,13 +20,9 @@ class SLAMNet(nn.Module):
         w = img.size()[3]
         k = cam.inverse()
         img = img.flatten(2)
-        img = (k @ img).reshape(b, 3, h, w)
+        img = (k @ img)
+        img = img.reshape(b,3,h,w)
         x = self.encoder(img)
-        decoded = self.decoder(x)
-        x = self.calib(x)
-        x = x.reshape(b,3,h,w)
-        x = self.extractor(x,decoded)
-        x = x.reshape(b,1,h,w)
         return x
 
     def save(self):
@@ -42,8 +35,8 @@ class SLAMNet(nn.Module):
 
 
 # if __name__ == '__main__':
-#     model = SLAMNet()
-#     x = torch.randn(2, 3, 256, 832)
-#     cam = torch.randn(2,3,3)
-#     out = model(x, cam)
-#     print(out.size())
+    # model = SLAMNet()
+    # x = torch.randn(2, 3, 256, 832)
+    # cam = torch.randn(2,3,3)
+    # out = model(x, cam)
+    # print(out.size())
