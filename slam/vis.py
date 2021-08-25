@@ -41,16 +41,15 @@ def visualize(pt, camera, model=None):
         if model:
             img = img.to(device)
             with torch.no_grad():
-                # with torch.cuda.amp.autocast():
-                pred = model(img,k)
-                pred = pred.detach().to(dtype=torch.float32)
+                with torch.cuda.amp.autocast():
+                    pred = model(img,k)
+                    depth = pred.detach()
                 # depth = pred.detach().to(dtype=torch.float32)
         # camera.K = k[0].to(dtype=torch.float64)
         # xyz = camera.pixel_to_cam(depth)
-        xyz = pred.cpu()
         
 
-        # xyz = depth.cpu()
+        xyz = depth.cpu()
 
         pt.run(xyz)
 
