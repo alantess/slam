@@ -43,7 +43,7 @@ def visualize(pt, camera, model=None):
             with torch.no_grad():
                 with torch.cuda.amp.autocast():
                     pred = model(img,k)
-                    depth = pred.detach()
+                    depth = pred.detach().to(dtype=torch.float32)
                 # depth = pred.detach().to(dtype=torch.float32)
         # camera.K = k[0].to(dtype=torch.float64)
         # xyz = camera.pixel_to_cam(depth)
