@@ -29,7 +29,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device(
 
 import matplotlib.pyplot as plt
 
-def visualize(pt, camera, model=None):
+def visualize(pt,  model=None):
     print("Running PointCloud...")
     if model:
         model.to(device)
@@ -45,13 +45,11 @@ def visualize(pt, camera, model=None):
                     pred = model(img,k)
                     depth = pred.detach().to(dtype=torch.float32)
                 # depth = pred.detach().to(dtype=torch.float32)
-        # camera.K = k[0].to(dtype=torch.float64)
         # xyz = camera.pixel_to_cam(depth)
         
 
-        xyz = depth.cpu()
 
-        pt.run(xyz)
+        pt.run(depth, False)
 
 def run_model(model, img, k):
     pred = model(img, k).detach()
@@ -61,10 +59,9 @@ def run_model(model, img, k):
 def main():
     model = SLAMNet()
     model.load()
-    proj = CameraProjector()
     pt = PointCloud(k[0])
     pt.init()
-    visualize(pt, proj, model)
+    visualize(pt)
 
 
 if __name__ == '__main__':

@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     slam_optim = torch.optim.Adam(slam_model.parameters(), lr=3e-6)
 
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss()
     print('=> Gatheing Datset')
 
     trainset = KittiSet(args.kitti_dir, transforms=preprocess)

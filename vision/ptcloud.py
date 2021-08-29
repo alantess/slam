@@ -1,4 +1,6 @@
+import torch
 import open3d as o3d
+from support.compute import CameraProjector
 import numpy as np
 
 
@@ -21,6 +23,8 @@ class PointCloud(object):
         self.width = width
         self.bg_color = background_color
         self.prev = None
+        self.cam = CameraProjector() 
+        self.cam.K = k.float()
 
     def init(self):
 
@@ -51,16 +55,17 @@ class PointCloud(object):
     def __del__(self):
         self.vis.destroy_window()
 
-    def run(self, depth_points):
-        self.add_points(depth_points)
+    def run(self, depth_points, use_image=True):
+        self.add_points(depth_points, use_image)
         self.time_step += 1
 
     def _get_image(self, d_img):
         depth = o3d.geometry.Image(d_img[0].squeeze(0).numpy())
         return depth
 
-    def add_points(self, xyz, use_image=True):
+    def add_points(self, xyz, use_image):
         if use_image:
+            xyz.cpu()
             img = self._get_image(xyz)
             self.geometry.points = self.geometry.create_from_depth_image(
                 depth=img, intrinsic=self.ph_cam).points
@@ -68,6 +73,9 @@ class PointCloud(object):
             self.geometry.transform([[1, 0, 0, 0], [0, -1, 0, 0],
                                      [0, 0, -1, 0], [0, 0, 0, 1]])
         else:
+            with torch.cuda.amp.autocast():
+                xyz = self.cam.pixel_to_cam(xyz, False)
+            xyz.cpu()
             self.geometry.points = o3d.utility.Vector3dVector(xyz)
 
         self.vis.add_geometry(self.geometry)

@@ -52,7 +52,7 @@ class CameraProjector(object):
             depth_map = depth_map.squeeze(1)
 
         b, h, w = depth_map.size()
-        depth_map = 1 / depth_map
+        # depth_map = 1 / depth_map
         inv = self.K.inverse()
 
         if (self.pixel_coords is None) or self.pixel_coords.size(2) < h:

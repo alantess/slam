@@ -88,7 +88,7 @@ class CalibNet(nn.Module):
         super(CalibNet, self).__init__()
         self.activation = nn.SELU()
         encoder_layer = nn.TransformerEncoderLayer(d_model=208, nhead=8)
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=12)
 
     def forward(self, img):
         x = img.flatten(2)
