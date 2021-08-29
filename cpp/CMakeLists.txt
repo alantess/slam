@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 find_package( OpenCV REQUIRED )
 find_package(Torch REQUIRED)
+find_package(Pangolin 0.4 REQUIRED)
 find_package(OpenMP)
 if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -28,7 +29,7 @@ message(STATUS "    libraries: ${OpenCV_LIBS}")
 message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 
 
-include_directories( ${OpenCV_INCLUDE_DIRS} )
+include_directories( ${OpenCV_INCLUDE_DIRS}  ${Pangolin_INCLUDe_DIRS})
 add_executable(main src/main.cpp 
   include/dataset.h
   src/dataset.cpp
@@ -39,6 +40,7 @@ add_executable(main src/main.cpp
 target_include_directories(main PRIVATE include)
 target_link_libraries( main ${OpenCV_LIBS})
 target_link_libraries(main "${TORCH_LIBRARIES}")
+target_link_libraries(main pango_display pango_python)
 set_property(TARGET main PROPERTY CXX_STANDARD 20)
 
 
